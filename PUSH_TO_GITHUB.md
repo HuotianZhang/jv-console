@@ -1,32 +1,42 @@
 # Pushing this to GitHub
 
-The repository is already initialised and committed — history and all. You only
-need to create the remote and push.
+The remote already exists and the first commit is on it:
 
-## With the GitHub CLI
-
-```bash
-gh repo create jv-console --private --source=. --remote=origin --push
+```
+origin  https://github.com/HuotianZhang/jv-console.git   (private)
 ```
 
-## Without it
+So a push is just:
 
-Create an empty **private** repository named `jv-console` at
-<https://github.com/new> — no README, no .gitignore, no licence, so the first
-push is not rejected. Then:
+```powershell
+cd D:\jv-console
+git push origin main
+```
 
-```bash
-git remote add origin https://github.com/HuotianZhang/jv-console.git
-git push -u origin main
+Run it from a terminal on this machine. A shell reaching the folder over a
+network mount cannot use the Windows credential store, so the push has to come
+from here.
+
+## If git complains about a lock file
+
+A crashed run can leave `.git\*.lock` behind, and every later commit fails with
+"Another git process seems to be running". Nothing is running — delete them:
+
+```powershell
+del .git\index.lock, .git\HEAD.lock, .git\refs\heads\main.lock -ErrorAction Ignore
+git gc --prune=now
 ```
 
 ## Check before you push
 
-`.gitignore` excludes `*.dat`, `data/`, `data.json` and `demo.html`, so
-measurement data cannot be committed by accident. `index.html` ships with an
-empty dataset. Confirm with:
+`.gitignore` keeps measurement data and design material out: `*.dat`, `data/`,
+`data.json`, `demo.html`, `design-system/`, `design-screens/`, `design-in/`,
+`DESIGN_*.md`. `index.html` ships with an empty dataset — you load your own
+scans through "Import files…" or by dropping `.dat` files on the left pane.
 
-```bash
-git ls-files | xargs ls -la
-grep -c '"scans":\[\]' index.html   # 1 = empty dataset, as intended
+```powershell
+git ls-files                                  # nothing but code and docs
+Select-String -Path index.html -Pattern '"scans":\[\]' -SimpleMatch | Measure-Object
 ```
+
+One match means the shipped page carries no data.

@@ -1,226 +1,247 @@
 <title>JV Group Builder</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 
 <style>
+/* tokens — one light palette, no dark mode (the figures are published on white either way) */
 :root{
-  --ground:#F3F6F6; --surface:#FFFFFF; --surface-2:#EAEFEF; --surface-3:#DFE7E7;
-  --ink:#0F1B21; --ink-2:#2C3E45; --muted:#5A6C72;
-  --line:#D2DBDC; --line-soft:#E3EAEA;
-  --accent:#0B6E75; --accent-soft:#DCEEEE; --accent-mid:#8FC5C8;
-  --amber:#A85410; --amber-soft:#F7EADC;
-  --flag:#93262F; --flag-soft:#F7E2E2;
-  --f-display:"Source Serif 4", Georgia, serif;
+  --ground:#E8EAEB; --surface:#FFFFFF; --surface-2:#F1F3F4; --surface-3:#E0E4E6;
+  --ink:#11161A; --ink-2:#39434A; --muted:#6D777E;
+  --line:#CBD2D6; --line-soft:#E4E8EB; --ink-rule:#11161A;
+  --accent:#0A5A61; --accent-soft:#DEECED; --accent-mid:#7EB2B6; --sel:#DEECED;
+  --amber:#8A4708; --amber-soft:#F3E8D8;
+  --flag:#8A1E29; --flag-soft:#F4DEE0;
   --f-body:"IBM Plex Sans", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
   --f-mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
-}
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
-  --ground:#0A1216; --surface:#101C21; --surface-2:#16252B; --surface-3:#1E3038;
-  --ink:#E6EEEF; --ink-2:#C2D2D4; --muted:#8AA0A5;
-  --line:#26383F; --line-soft:#1B2A30;
-  --accent:#4FBCC0; --accent-soft:#0E3033; --accent-mid:#2A6E73;
-  --amber:#E29B50; --amber-soft:#2B1F14;
-  --flag:#E4818B; --flag-soft:#331C1F;
-}}
-:root[data-theme="dark"]{
-  --ground:#0A1216; --surface:#101C21; --surface-2:#16252B; --surface-3:#1E3038;
-  --ink:#E6EEEF; --ink-2:#C2D2D4; --muted:#8AA0A5;
-  --line:#26383F; --line-soft:#1B2A30;
-  --accent:#4FBCC0; --accent-soft:#0E3033; --accent-mid:#2A6E73;
-  --amber:#E29B50; --amber-soft:#2B1F14;
-  --flag:#E4818B; --flag-soft:#331C1F;
+  --f-display:var(--f-body);
+  --s1:2px; --s2:4px; --s3:6px; --s4:8px; --s5:12px; --s6:16px; --s7:24px; --s8:32px;
+  --radius:0px;
+  /* data series — mirrored into JS at boot so the two can never drift */
+  --series-1:#2a78d6; --series-2:#1baf7a; --series-3:#eda100; --series-4:#008300;
+  --series-5:#4a3aa7; --series-6:#e34948; --series-7:#eb6834; --series-8:#e87ba4;
 }
 
 *{box-sizing:border-box}
-body{margin:0; background:var(--ground); color:var(--ink); font-family:var(--f-body); font-size:15px; line-height:1.5;
+body{margin:0; background:var(--ground); color:var(--ink); font-family:var(--f-body); font-size:14px; line-height:1.5;
   -webkit-font-smoothing:antialiased}
-.page{max-width:1360px; margin:0 auto; padding:1.5rem 1.2rem 2.5rem; display:flex; flex-direction:column; gap:1rem}
-h1{font-family:var(--f-display); font-size:1.68rem; font-weight:700; margin:0; letter-spacing:-.015em}
-.sub{color:var(--muted); font-size:.82rem; max-width:82ch}
-.sub b{color:var(--ink-2); font-weight:600}
+.page{max-width:1440px; margin:0 auto; padding:var(--s7) var(--s6) 64px; display:flex; flex-direction:column; gap:var(--s6)}
+h1{font-family:var(--f-display); font-size:1.35rem; font-weight:600; margin:0; letter-spacing:-.02em}
+.sub{color:var(--muted); font-size:.8rem; margin:var(--s2) 0 0; max-width:88ch}
+.sub b{color:var(--ink-2); font-weight:500}
 .mono{font-family:var(--f-mono); font-variant-numeric:tabular-nums}
-.lbl{font-size:.65rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)}
 
-.btn{font-family:var(--f-body); font-size:.78rem; color:var(--ink); background:var(--surface-2);
-  border:1px solid var(--line); border-radius:3px; padding:.3rem .62rem; cursor:pointer}
+/* ---------- controls ---------- */
+.btn{font:500 11.5px/1 var(--f-body); color:var(--ink); background:transparent; border:1px solid var(--ink-2);
+  border-radius:var(--radius); padding:6px 10px; cursor:pointer; white-space:nowrap; flex:none}
 .btn:hover:not(:disabled){background:var(--surface-3)}
-.btn:disabled{opacity:.42; cursor:default}
-.btn.primary{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600}
-.btn.outline{background:transparent; border:1px solid var(--accent); color:var(--accent); font-weight:600; white-space:nowrap}
-.btn.outline:hover:not(:disabled){background:var(--accent-soft)}
-.resetbar{display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; background:var(--surface-2);
-  border:1px solid var(--line); border-radius:4px; padding:.5rem .6rem; margin-bottom:.65rem}
-.resetbar span{font-size:.71rem; color:var(--muted); line-height:1.45; flex:1; min-width:190px}
-.btn.primary:hover:not(:disabled){filter:brightness(1.08)}
-.btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
-
-/* ---------- two panes ---------- */
-.panes{display:grid; grid-template-columns:1.15fr .85fr; gap:1rem; align-items:start}
-@media (max-width:960px){ .panes{grid-template-columns:1fr} }
-.pane{background:var(--surface); border:1px solid var(--line); border-radius:5px; display:flex; flex-direction:column;
-  min-height:400px; overflow:hidden}
-.pane > header{display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; padding:.6rem .75rem;
-  border-bottom:1px solid var(--line); background:var(--surface-2)}
-.pane > header .grow{flex:1}
-.pane .body{padding:.7rem; overflow-y:auto; max-height:640px; position:relative}
-.hint{font-size:.72rem; color:var(--muted)}
-
-/* ---------- explorer 1 tiles ---------- */
-#tiles{display:grid; grid-template-columns:repeat(auto-fill,minmax(196px,1fr)); gap:.6rem; align-content:start; min-height:320px}
-.emptyfolder{grid-column:1/-1; border:1px dashed var(--line); border-radius:5px; padding:2.2rem 1.4rem;
-  text-align:center; color:var(--muted); font-size:.82rem; line-height:1.6; align-self:start}
-.emptyfolder b{color:var(--ink); font-size:.95rem}
-.emptyfolder p{margin:.2rem 0}
-.emptyfolder em{color:var(--accent); font-style:normal; font-weight:600}
-.tile{border:1px solid var(--line); border-radius:4px; background:var(--surface); padding:.5rem .55rem .45rem;
-  display:flex; flex-direction:column; gap:.32rem; position:relative; user-select:none}
-.tile.sel{background:var(--accent-soft); border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset}
-.tile.lit{outline:2px dashed var(--amber); outline-offset:1px}
-.gtag.own{color:var(--muted); background:var(--surface-2)}
-.gtag.none{color:var(--amber); background:var(--amber-soft)}
-.tile .top{display:flex; align-items:flex-start; gap:.35rem; padding-right:16px}
-.tile .x{position:absolute; top:2px; right:3px; width:18px; height:18px; border:0; background:transparent;
-  color:var(--muted); font-size:.9rem; line-height:1; cursor:pointer; border-radius:3px; opacity:.55; padding:0}
-.tile:hover .x, .tile.sel .x{opacity:1}
-.tile .x:hover{background:var(--flag-soft); color:var(--flag)}
+.btn:disabled{opacity:.38; cursor:default}
+.btn.primary{font-weight:600; color:var(--surface); background:var(--accent); border-color:var(--accent); padding:6px 11px}
+.btn.primary:hover:not(:disabled){filter:brightness(1.14)}
+.btn:focus-visible, .lnk:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.lnk{background:none; border:0; padding:2px 0; font:400 10.5px/1 var(--f-mono); color:var(--ink-2);
+  cursor:pointer; letter-spacing:.01em; white-space:nowrap; flex:none}
+.lnk:hover{color:var(--accent)}
+.lnk.accent{color:var(--accent); text-decoration:underline; text-underline-offset:2px}
+.divider{width:1px; height:20px; background:var(--line); flex:none}
 .linky{background:none; border:0; padding:0; color:var(--accent); font:inherit; cursor:pointer; text-decoration:underline}
-.tile .chev{font-family:var(--f-mono); font-size:.72rem; color:var(--muted); cursor:pointer; padding:0 .18rem; border-radius:2px}
-.tile .chev:hover{background:var(--surface-2); color:var(--accent)}
-.tname{font-family:var(--f-mono); font-size:.75rem; color:var(--ink); flex:1; word-break:break-all; line-height:1.28;
-  border-radius:2px; padding:0 .16rem; cursor:text}
-.tname:hover{background:var(--surface-2)}
-.tname input{font:inherit; width:100%; background:var(--surface); color:var(--ink); border:1px solid var(--accent);
-  border-radius:2px; padding:0 .16rem}
-.tmeta{font-family:var(--f-mono); font-size:.62rem; color:var(--muted); line-height:1.3;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.badge{font-family:var(--f-mono); font-size:.58rem; letter-spacing:.04em; text-transform:uppercase;
-  padding:.04rem .3rem; border-radius:2px; border:1px solid var(--line); color:var(--muted)}
-.badge.dark{background:var(--surface-2)}
-.badge.low{background:var(--amber-soft); color:var(--amber); border-color:transparent}
-.badge.flagged{background:var(--flag-soft); color:var(--flag); border-color:transparent}
-.gtag{display:inline-flex; align-items:center; gap:.22rem; font-family:var(--f-mono); font-size:.6rem; color:var(--accent);
-  background:var(--accent-soft); border-radius:2px; padding:.05rem .3rem; max-width:100%; overflow:hidden;
-  text-overflow:ellipsis; white-space:nowrap}
-.thumb{background:var(--surface-2); border-radius:3px; display:block; width:100%; height:auto}
-.thumb text.ax{font-family:var(--f-mono); font-size:7px; fill:var(--muted)}
-.pixels{border-top:1px solid var(--line-soft); margin-top:.15rem; padding-top:.3rem}
-.prow{display:grid; grid-template-columns:auto 1.1rem repeat(4,1fr); gap:.15rem .3rem; align-items:center;
-  font-family:var(--f-mono); font-size:.64rem; padding:.05rem 0}
-.prow.head{color:var(--muted); font-size:.56rem; letter-spacing:.06em; text-transform:uppercase}
-.prow input[type=checkbox]{width:12px; height:12px; margin:0; accent-color:var(--accent); cursor:pointer}
-.prow .v{text-align:right; color:var(--ink-2)}
-.prow.offp .v, .prow.offp .pl{opacity:.4; text-decoration:line-through}
-.prow.badpx .pl{color:var(--flag)}
-.band{position:absolute; border:1px solid var(--accent); background:color-mix(in srgb, var(--accent) 14%, transparent);
-  pointer-events:none; border-radius:2px; z-index:5}
 
-/* ---------- explorer 2 groups ---------- */
-#groups{display:flex; flex-direction:column; gap:.55rem; min-height:320px}
-.gcard{border:1px solid var(--line); border-radius:4px; background:var(--surface); padding:.55rem .6rem .5rem;
-  position:relative; display:flex; flex-direction:column; gap:.35rem}
-.gcard.lit{outline:2px dashed var(--amber); outline-offset:1px}
-.gcard.gsel{background:var(--accent-soft); border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset}
-.gcard.gpart{border-color:var(--accent); box-shadow:inset 4px 0 0 var(--accent)}
-.gcard.drop{border-color:var(--accent); background:var(--accent-soft)}
+/* ---------- pane chrome ---------- */
+.panes{display:grid; grid-template-columns:minmax(0,1fr) minmax(330px,400px); gap:var(--s7); align-items:start}
+@media (max-width:1040px){ .panes{grid-template-columns:1fr} #pane2{position:static!important; max-height:none!important} }
+.pane{background:var(--surface); border:1px solid var(--line); border-top:2px solid var(--ink-rule);
+  display:flex; flex-direction:column; overflow:hidden}
+.pane > header{display:flex; align-items:center; gap:var(--s5); padding:var(--s4) var(--s5);
+  border-bottom:1px solid var(--line); background:var(--surface-2); min-height:38px}
+.pane > header .grow{flex:1}
+.pane .body{padding:var(--s4) var(--s5) var(--s5); overflow-y:auto; position:relative}
+#pane1 .body{max-height:calc(100vh - 210px); min-height:320px}
+#pane2{position:sticky; top:var(--s6); max-height:calc(100vh - 56px)}
+#pane2 .body{padding:var(--s5); display:flex; flex-direction:column; gap:var(--s3)}
+.tag{font:600 9px/1 var(--f-mono); letter-spacing:.14em; text-transform:uppercase;
+  color:var(--surface); background:var(--ink); padding:4px 5px 3px; flex:none}
+.ptitle{font:600 12.5px/1 var(--f-body); letter-spacing:-.012em; color:var(--ink); flex:none}
+.pcount{font:400 10.5px/1 var(--f-mono); font-variant-numeric:tabular-nums; color:var(--muted);
+  white-space:nowrap; min-width:0; overflow:hidden; text-overflow:ellipsis}
+.psel{font:500 10.5px/1 var(--f-mono); font-variant-numeric:tabular-nums; color:var(--ink-2); white-space:nowrap; flex:none}
+.nameplate{display:inline-flex; align-items:center; gap:var(--s3); flex:none}
+/* the groups pane wears the ink band — it is the destination, and it says so */
+#pane2 > header{background:var(--ink); border-bottom:0}
+#pane2 .tag{color:var(--ink); background:var(--surface)}
+#pane2 .ptitle{color:var(--surface)}
+#pane2 .pcount{color:var(--accent-mid)}
+#pane2 .btn{color:var(--surface); border-color:var(--accent-mid)}
+#pane2 .btn:hover:not(:disabled){background:rgba(255,255,255,.12)}
+#pane2 .btn:disabled{opacity:.34}
 .pane.armed{box-shadow:0 0 0 2px var(--accent) inset}
-.gcard.solo{flex-direction:row; align-items:baseline; gap:.5rem; flex-wrap:wrap}
-.gcard.solo .gmeta{margin-left:auto; padding-right:1.1rem}
-.gcard .x{position:absolute; top:3px; right:4px; width:19px; height:19px; border:0; background:transparent;
-  color:var(--muted); font-size:.95rem; line-height:1; cursor:pointer; border-radius:3px}
-.gcard .x:hover{background:var(--flag-soft); color:var(--flag)}
-.gnum{font-family:var(--f-mono); font-size:.68rem; font-weight:600; color:var(--surface); background:var(--accent);
-  border-radius:3px; padding:.05rem .32rem; margin-right:.4rem; flex:none}
-.gcard.solo .gnum{order:-1}
-.gname{font-family:var(--f-mono); font-size:.8rem; font-weight:600; color:var(--ink); padding:0 .18rem 0 0;
-  cursor:text; border-radius:2px; max-width:calc(100% - 26px)}
+
+/* ---------- explorer 1 · tiles ---------- */
+#tiles{display:grid; grid-template-columns:repeat(auto-fill,minmax(164px,1fr)); gap:var(--s3);
+  align-content:start; min-height:300px}
+.emptyfolder{grid-column:1/-1; border:1px dashed var(--line); padding:var(--s8) var(--s7);
+  text-align:center; color:var(--muted); font-size:.8rem; line-height:1.6; align-self:start}
+.emptyfolder b{color:var(--ink); font-size:.92rem}
+.emptyfolder p{margin:var(--s1) 0}
+.emptyfolder em{color:var(--accent); font-style:normal; font-weight:600}
+.tile{position:relative; border:1px solid var(--line); background:var(--surface);
+  display:flex; flex-direction:column; user-select:none; cursor:pointer}
+.tile.sel{background:var(--sel); outline:2px solid var(--accent); outline-offset:-2px}
+.tile.lit{outline:2px dashed var(--amber); outline-offset:-2px}
+.tile .tab{position:absolute; top:0; right:0; font:600 9px/1 var(--f-mono); padding:4px 4px 3px;
+  min-width:14px; text-align:center; z-index:2}
+.thead{display:flex; align-items:flex-start; gap:var(--s2); padding:var(--s3) 22px var(--s3) var(--s3); min-height:34px}
+.chev{font:400 9.5px/1.3 var(--f-mono); color:var(--muted); flex:none; cursor:pointer; padding:0 1px}
+.chev:hover{color:var(--accent)}
+.tname{font:400 10.5px/1.3 var(--f-mono); color:var(--ink); flex:1; min-width:0; word-break:break-all; cursor:text;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+.tname:hover{background:var(--surface-2)}
+.tname input{font:400 10.5px/1.3 var(--f-mono); width:100%; background:var(--surface); color:var(--ink);
+  border:1px solid var(--accent); border-radius:var(--radius); padding:0 1px}
+.thumb{background:var(--surface-2); border-top:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft);
+  display:block; width:100%; height:auto; color:var(--ink-2)}
+.tile.sel .thumb{color:var(--accent)}
+.thumb text.ax{font-family:var(--f-mono); font-size:7px; fill:var(--muted)}
+.trow{display:flex; align-items:center; gap:var(--s2); padding:var(--s3); min-height:20px}
+.badge{font:500 8px/1 var(--f-mono); letter-spacing:.06em; text-transform:uppercase; padding:3px 4px 2px; flex:none}
+.badge.dark{color:var(--muted); background:var(--surface-3)}
+.badge.low{color:var(--amber); background:var(--amber-soft)}
+.badge.flagged{color:var(--flag); background:var(--flag-soft); text-transform:none}
+.pxab{font:400 9px/1 var(--f-mono); font-variant-numeric:tabular-nums; color:var(--amber); flex:none}
+.gtag{font:400 9px/1.2 var(--f-mono); color:var(--muted); margin-left:auto; text-align:right; word-break:break-all;
+  display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden; min-width:0}
+.gtag.none{color:var(--amber)}
+.tile .x{border:0; background:transparent; color:var(--muted); font:400 11px/1 var(--f-mono);
+  cursor:pointer; padding:0 0 0 1px; flex:none; opacity:.5; margin-left:auto}
+.gtag + .x{margin-left:0}
+.tile:hover .x, .tile.sel .x{opacity:1}
+.tile .x:hover{color:var(--flag)}
+.pixels{border-top:1px solid var(--line-soft); padding:var(--s3)}
+.prow{display:grid; grid-template-columns:auto 1rem repeat(4,1fr); gap:var(--s1) var(--s2); align-items:center;
+  font:400 9.5px/1.4 var(--f-mono); font-variant-numeric:tabular-nums}
+.prow.head{color:var(--muted); font-size:8px; letter-spacing:.06em; text-transform:uppercase}
+.prow input[type=checkbox]{width:11px; height:11px; margin:0; accent-color:var(--accent); cursor:pointer}
+.prow .v{text-align:right; color:var(--ink-2)}
+.prow.offp .v, .prow.offp .pl{opacity:.38; text-decoration:line-through}
+.prow.badpx .pl{color:var(--flag)}
+.band{position:absolute; border:1px solid var(--accent); background:color-mix(in srgb, var(--accent) 12%, transparent);
+  pointer-events:none; z-index:5}
+
+/* ---------- explorer 2 · groups ---------- */
+#groups{display:flex; flex-direction:column; gap:var(--s3); min-height:120px}
+.gcard{display:flex; background:var(--surface); border:1px solid var(--line); position:relative}
+.gcard.gsel{background:var(--sel); border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset}
+.gcard.gpart{border-color:var(--accent)}
+.gcard.lit{outline:2px dashed var(--amber); outline-offset:-2px}
+.gcard.drop{border-color:var(--accent); background:var(--sel)}
+/* the number lives on a full-height spine in a ROW container — it cannot stretch across the card */
+.gspine{width:22px; flex:none; display:flex; flex-direction:column; align-items:center; padding-top:var(--s3);
+  font:600 10px/1 var(--f-mono)}
+.gbody{flex:1; min-width:0; padding:var(--s3) var(--s4); display:flex; flex-direction:column; gap:var(--s2)}
+.grow1{display:flex; align-items:baseline; gap:var(--s4)}
+.gname{font:600 12px/1.25 var(--f-mono); color:var(--ink); min-width:0; cursor:text;
+  display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; overflow:hidden}
 .gname:hover{background:var(--surface-2)}
-.gname input{font:inherit; width:100%; background:var(--surface); color:var(--ink); border:1px solid var(--accent);
-  border-radius:2px; padding:0 .16rem}
-.gmeta{font-family:var(--f-mono); font-size:.63rem; color:var(--muted)}
-.members{display:flex; flex-wrap:wrap; gap:.25rem}
-.mem{display:inline-flex; align-items:center; gap:.28rem; font-family:var(--f-mono); font-size:.64rem;
-  background:var(--surface-2); border:1px solid var(--line-soft); border-radius:12px; padding:.08rem .18rem .08rem .45rem;
-  color:var(--ink-2); max-width:100%}
-.mem span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px}
-.mem button{border:0; background:transparent; color:var(--muted); cursor:pointer; font-size:.7rem; line-height:1;
-  padding:.06rem .18rem; border-radius:50%}
-.mem button:hover{background:var(--flag-soft); color:var(--flag)}
-#dropzone{border:1px dashed var(--line); border-radius:4px; padding:.6rem; text-align:center; font-size:.72rem;
-  color:var(--muted); background:var(--surface); position:sticky; bottom:-.7rem; margin-top:.55rem; z-index:3}
-#dropzone.drop{border-color:var(--accent); border-style:solid; background:var(--accent-soft); color:var(--accent)}
+.gname input{font:600 12px/1.25 var(--f-mono); width:100%; background:var(--surface); color:var(--ink);
+  border:1px solid var(--accent); border-radius:var(--radius); padding:0 1px}
+.gmeta{font:400 9.5px/1.2 var(--f-mono); font-variant-numeric:tabular-nums; color:var(--muted);
+  margin-left:auto; white-space:nowrap; flex:none}
+.gcard .x{border:0; background:transparent; color:var(--muted); font:400 12px/1 var(--f-mono);
+  cursor:pointer; padding:0 0 0 2px; flex:none}
+.gcard .x:hover{color:var(--flag)}
+.members{display:flex; flex-wrap:wrap; gap:var(--s1) var(--s2)}
+.mem{display:inline-flex; align-items:center; gap:var(--s2); font:400 9.5px/1 var(--f-mono);
+  background:var(--surface-2); border:1px solid var(--line-soft); padding:3px 3px 3px 5px; color:var(--ink-2); max-width:100%}
+.mem span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:150px}
+.mem button{border:0; background:transparent; color:var(--muted); cursor:pointer; font:400 9px/1 var(--f-mono); padding:0 1px}
+.mem button:hover{color:var(--flag)}
+#dropzone{border:1px dashed var(--line); padding:var(--s5) var(--s4); text-align:center;
+  font:400 10px/1.5 var(--f-mono); color:var(--muted); background:var(--surface)}
+#dropzone.drop{border-color:var(--accent); border-style:solid; background:var(--sel); color:var(--accent)}
+.resetbar{display:flex; align-items:baseline; gap:var(--s4); padding-top:var(--s3); border-top:1px solid var(--line)}
+.resetbar span{font:400 9.5px/1.4 var(--f-mono); color:var(--muted); flex:1}
 
 /* ---------- results ---------- */
-#results .body{max-height:none}
-.fig{display:block; width:100%; height:auto; background:#fff; border:1px solid var(--line); border-radius:3px}
-#figParams{margin-bottom:.9rem}
-.resrow{display:grid; grid-template-columns:minmax(340px,1fr) minmax(320px,1fr); gap:1rem; align-items:start}
-@media (max-width:900px){ .resrow{grid-template-columns:1fr} }
-table.summary{width:100%; border-collapse:collapse; font-size:.8rem}
-table.summary th{background:var(--accent); color:#fff; font-family:var(--f-body); font-weight:600; font-size:.72rem;
-  padding:.5rem .6rem; text-align:right; white-space:nowrap}
-table.summary th:first-child{border-radius:3px 0 0 0}
+#results .body{padding:var(--s6) var(--s5) var(--s5); display:flex; flex-direction:column; gap:var(--s6); overflow:visible}
+.blockhead{display:flex; align-items:baseline; gap:var(--s4); margin-bottom:var(--s4); flex-wrap:wrap}
+.blockhead b{font:600 10px/1 var(--f-mono); letter-spacing:.14em; text-transform:uppercase; color:var(--ink)}
+.blockhead span{font:400 10px/1.4 var(--f-mono); color:var(--muted)}
+.fig{display:block; width:100%; height:auto; background:#fff; border:1px solid var(--line)}
+.empty{font:400 11px/1.5 var(--f-mono); color:var(--muted); margin:0; padding:var(--s7) 0; text-align:center}
+table.summary{width:100%; border-collapse:collapse; border-top:2px solid var(--ink-rule)}
+table.summary th{text-align:right; padding:var(--s4); font:600 10px/1 var(--f-mono); letter-spacing:.1em;
+  color:var(--muted); border-bottom:1px solid var(--line); white-space:nowrap}
+table.summary th:nth-child(1){text-align:left; width:44px}
 table.summary th:nth-child(2){text-align:left}
-table.summary th:last-child{border-radius:0 3px 0 0}
-table.summary td{font-family:var(--f-mono); font-variant-numeric:tabular-nums; text-align:right;
-  padding:.42rem .6rem; border-bottom:1px solid var(--line-soft); white-space:nowrap}
-table.summary td:nth-child(2){text-align:left; font-family:var(--f-body)}
-table.summary tbody tr:nth-child(even){background:var(--surface-2)}
-table.summary td i{width:9px; height:9px; border-radius:2px; display:inline-block; margin-right:.45rem}
-.tnote{font-size:.68rem; color:var(--muted); margin:.5rem 0 0; line-height:1.45}
-dialog.exp{min-width:min(420px,92vw)}
-dialog.exp h3{font-family:var(--f-display); font-size:1.05rem; margin:0 0 .6rem}
-dialog.exp label{display:flex; align-items:center; gap:.5rem; font-size:.85rem; padding:.22rem 0; cursor:pointer}
-dialog.exp input[type=checkbox], dialog.exp input[type=radio]{accent-color:var(--accent); width:14px; height:14px; margin:0}
-dialog.exp .fmt{display:flex; gap:1rem; align-items:center; margin:.6rem 0 .2rem;
-  border-top:1px solid var(--line-soft); padding-top:.6rem}
-dialog.exp .fmt label{padding:0}
-dialog.exp .note{font-size:.7rem; color:var(--muted); line-height:1.45; margin:.6rem 0 .2rem}
-dialog.exp .acts{display:flex; justify-content:flex-end; gap:.5rem; margin-top:.8rem}
+table.summary th em{color:var(--ink); font-weight:700; font-style:normal}
+table.summary td{padding:var(--s5) var(--s4); text-align:right; font:400 13px/1 var(--f-mono);
+  font-variant-numeric:tabular-nums; color:var(--ink); white-space:nowrap; border-bottom:1px solid var(--line-soft)}
+table.summary td:nth-child(1){text-align:left; padding-right:0}
+table.summary td:nth-child(2){text-align:left; font-weight:600}
+table.summary td:nth-child(6){font-weight:600}
+table.summary td:last-child{font-size:10.5px; color:var(--muted)}
+table.summary tbody tr:hover{background:var(--surface-2)}
+.sd{color:var(--muted); font-size:10.5px; font-weight:400}
+.gnumchip{display:inline-block; font:600 10.5px/1 var(--f-mono); padding:4px 5px 3px; min-width:16px; text-align:center}
 
-footer{border-top:1px solid var(--line); padding-top:.8rem; display:flex; flex-wrap:wrap; gap:.3rem 1rem;
-  font-size:.72rem; color:var(--muted)}
-kbd{font-family:var(--f-mono); font-size:.72em; background:var(--surface-2); border:1px solid var(--line);
-  border-bottom-width:2px; border-radius:3px; padding:.05em .34em; color:var(--ink-2)}
-.status{background:var(--surface); border:1px solid var(--line); border-radius:4px; padding:.55rem .8rem;
-  font-family:var(--f-mono); font-size:.76rem; color:var(--ink-2); display:flex; flex-wrap:wrap; gap:.4rem 1.4rem}
-.status b{color:var(--accent); font-weight:600}
-.toast{position:fixed; left:50%; transform:translateX(-50%); bottom:1.3rem; background:var(--ink); color:var(--ground);
-  font-family:var(--f-mono); font-size:.76rem; padding:.45rem .85rem; border-radius:4px; opacity:0; pointer-events:none;
+/* ---------- export dialog ---------- */
+dialog.exp{min-width:min(430px,92vw); border:1px solid var(--ink-rule); border-top-width:2px;
+  border-radius:var(--radius); background:var(--surface); color:var(--ink); padding:var(--s6)}
+dialog.exp::backdrop{background:rgba(17,22,26,.34)}
+dialog.exp h3{font:600 10px/1 var(--f-mono); letter-spacing:.14em; text-transform:uppercase; margin:0 0 var(--s5)}
+dialog.exp label{display:flex; align-items:center; gap:var(--s5); font-size:.82rem; padding:var(--s2) 0; cursor:pointer}
+dialog.exp input[type=checkbox], dialog.exp input[type=radio]{accent-color:var(--accent); width:13px; height:13px; margin:0}
+dialog.exp .fmt{display:flex; gap:var(--s6); align-items:center; margin:var(--s5) 0 0;
+  border-top:1px solid var(--line-soft); padding-top:var(--s5)}
+dialog.exp .fmt label{padding:0}
+dialog.exp .fmt > span{font:600 10px/1 var(--f-mono); letter-spacing:.1em; text-transform:uppercase; color:var(--muted)}
+dialog.exp .note{font:400 10px/1.5 var(--f-mono); color:var(--muted); margin:var(--s5) 0 0}
+dialog.exp .acts{display:flex; justify-content:flex-end; gap:var(--s4); margin-top:var(--s6)}
+
+/* ---------- the quiet rail at the bottom of the window ---------- */
+footer{position:fixed; left:0; right:0; bottom:0; height:26px; z-index:20;
+  display:flex; align-items:center; gap:var(--s6); padding:0 var(--s6); overflow:hidden;
+  background:var(--surface-2); border-top:1px solid var(--line);
+  font:400 9.5px/1 var(--f-mono); color:var(--muted); white-space:nowrap}
+footer span{flex:none}
+/* the rail never shows half a hint: the least-needed ones step out as the window narrows */
+@media (max-width:1400px){ footer .w3{display:none} }
+@media (max-width:1180px){ footer .w2{display:none} }
+@media (max-width:900px){ footer .w1{display:none} }
+kbd{font-family:var(--f-mono); font-size:9px; background:var(--surface); border:1px solid var(--line);
+  padding:1px 3px; color:var(--ink-2)}
+.toast{position:fixed; left:50%; transform:translateX(-50%); bottom:38px; background:var(--ink); color:var(--surface);
+  font:400 10.5px/1 var(--f-mono); padding:var(--s4) var(--s5); opacity:0; pointer-events:none;
   transition:opacity .18s; z-index:40}
 .toast.show{opacity:1}
-#ghost{position:fixed; display:none; z-index:60; pointer-events:none; background:var(--accent); color:#fff;
-  font-family:var(--f-mono); font-size:.72rem; padding:.3rem .6rem; border-radius:3px;
-  box-shadow:0 4px 14px rgba(0,0,0,.28)}
+#ghost{position:fixed; display:none; z-index:60; pointer-events:none; background:var(--accent); color:var(--surface);
+  font:400 10.5px/1 var(--f-mono); padding:var(--s3) var(--s5); box-shadow:0 4px 14px rgba(17,22,26,.3)}
 body.dragging{cursor:grabbing}
 body.dragging *{cursor:grabbing!important}
-.tile{cursor:pointer}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
 <div class="page">
   <div>
     <h1>JV Group Builder</h1>
-    <p class="sub">Step one, before any analysis. Left is the measurement folder; right is what you have grouped.
-      <b>Drag a box over tiles to select, drag the selection across to make a group, click a name to rename it.</b>
-      Every file starts as its own group, and selection is shared — pick a file and its group lights up,
-      pick a group and you have its files.</p>
+    <p class="sub">Grouping is step one, before any analysis. Left is the measurement folder, right is what you have built —
+      <b>drag a box over tiles to select, drag the selection across to make a group, click a name to rename it.</b>
+      Every file starts as its own group, and selection is shared between the panes.</p>
   </div>
-
-  <div class="status" id="status"></div>
 
   <div class="panes">
 
     <section class="pane" id="pane1">
       <header>
-        <span class="lbl">Explorer 1 · folder</span>
-        <button class="btn" data-act="import">Import files…</button>
-        <span class="hint mono" id="selInfo"></span>
-        <span class="hint mono" id="rmInfo"></span>
+        <span class="nameplate"><span class="tag">source</span><span class="ptitle">Measurement folder</span></span>
+        <span class="pcount" id="folderCount"></span>
+        <span class="psel" id="selInfo"></span>
+        <span class="pcount" id="rmInfo" style="flex:none"></span>
         <span class="grow"></span>
-        <button class="btn" data-act="expandAll">Expand all</button>
-        <button class="btn" data-act="selAll">Select all</button>
-        <button class="btn" data-act="clearSel">Clear</button>
+        <button class="btn" data-act="import">Import files…</button>
+        <span class="divider"></span>
+        <button class="lnk" data-act="expandAll">Expand all</button>
+        <button class="lnk" data-act="selAll">Select all</button>
+        <button class="lnk" data-act="clearSel">Clear</button>
         <button class="btn primary" data-act="group" id="btnGroup" disabled>Group selected →</button>
       </header>
       <div class="body"><div id="tiles"></div><div class="band" id="band" hidden></div></div>
@@ -228,20 +249,20 @@ body.dragging *{cursor:grabbing!important}
 
     <section class="pane" id="pane2">
       <header>
-        <span class="lbl">Explorer 2 · groups</span>
-        <span class="hint mono" id="grpInfo"></span>
+        <span class="nameplate"><span class="tag">dest</span><span class="ptitle">Groups</span></span>
         <span class="grow"></span>
+        <span class="pcount" id="grpInfo"></span>
         <button class="btn" data-act="mergeSel" id="btnMerge" disabled>Merge</button>
         <button class="btn" data-act="delSel" id="btnDelG" disabled>Remove</button>
       </header>
       <div class="body">
-        <div class="resetbar">
-          <button class="btn outline" data-act="reset">Reset to one group per file</button>
-          <span>Puts every file back into a group of its own — so all of them get plotted and averaged
-                individually, one number per file. This is the state the page starts in.</span>
-        </div>
         <div id="groups"></div>
-        <div id="dropzone">drop anywhere here for a new group · drop on a card to add to it</div>
+        <div id="dropzone">drop anywhere for a new group<br>· drop on a card to add to it</div>
+        <div class="resetbar">
+          <button class="lnk accent" data-act="reset">Reset to one group per file</button>
+          <span>every file back in a group of its own — the state the page starts in, where each file is
+                plotted and averaged on its own</span>
+        </div>
       </div>
     </section>
 
@@ -249,42 +270,40 @@ body.dragging *{cursor:grabbing!important}
 
   <section class="pane" id="results">
     <header>
-      <span class="lbl">Results · groups</span>
-      <span class="hint mono" id="resInfo"></span>
+      <span class="nameplate"><span class="tag">reads</span><span class="ptitle">Figure set</span></span>
+      <span class="pcount" id="resInfo"></span>
       <span class="grow"></span>
-      <button class="btn" data-act="clearGroups">Clear all groups</button>
+      <button class="lnk" data-act="clearGroups">Clear all groups</button>
       <button class="btn primary" data-act="exportOpen" id="btnExport" disabled>Export…</button>
     </header>
     <div class="body">
-      <div id="figParams"></div>
-      <p class="tnote" id="figNote" style="margin:.35rem 0 .9rem"></p>
-      <div class="resrow"><div id="figJV"></div><div id="tblWrap"></div></div>
+      <div id="tblWrap"></div>
+      <div id="plateWrap"></div>
     </div>
   </section>
-
-  <footer>
-    <span><kbd>Drag</kbd> on empty space — rubber-band select</span>
-    <span><kbd>Ctrl</kbd>/<kbd>Shift</kbd>+click — add or extend</span>
-    <span>click a selected item again — unselect</span>
-    <span>× on a tile removes the file · drop .dat files on the left pane to import</span>
-    <span><kbd>Ctrl</kbd>+<kbd>A</kbd> all</span><span><kbd>Esc</kbd> clear</span>
-    <span><kbd>F2</kbd> rename</span><span><kbd>Enter</kbd> group selected</span>
-    <span>click a group — its files are selected too</span>
-    <span>drag a group card onto another to merge</span>
-  </footer>
 </div>
+
+<footer>
+  <span><kbd>Drag</kbd> rubber-band select</span>
+  <span class="w1"><kbd>Ctrl</kbd>/<kbd>Shift</kbd>+click add or extend · click again to unselect</span>
+  <span><kbd>Ctrl</kbd>+<kbd>A</kbd> all</span>
+  <span><kbd>Esc</kbd> clear</span>
+  <span><kbd>F2</kbd> rename</span>
+  <span class="w2"><kbd>Enter</kbd> group selected</span>
+  <span class="w3">drag a card onto another to merge · × removes from the workspace, never from disk</span>
+</footer>
 
 <input type="file" id="fileIn" accept=".dat,.txt" multiple hidden>
 <dialog id="expDlg" class="exp">
   <h3>Export to disk</h3>
-  <label><input type="checkbox" id="exP" checked> Parameter plots — J<sub>SC</sub>, V<sub>OC</sub>, FF, PCE</label>
-  <label><input type="checkbox" id="exJ" checked> J(V) curves</label>
+  <label><input type="checkbox" id="exP" checked> Parameter plots — panels a–d, with the key</label>
+  <label><input type="checkbox" id="exJ" checked> J(V) curves — panel e, with the key</label>
   <label><input type="checkbox" id="exT" checked> Summary table (CSV — carries SD, min and max)</label>
-  <div class="fmt"><span class="lbl">Plot format</span>
+  <div class="fmt"><span>Plot format</span>
     <label><input type="radio" name="fmt" value="png" checked> PNG (3×)</label>
     <label><input type="radio" name="fmt" value="svg"> SVG (vector)</label>
   </div>
-  <p class="note">Figures export on a white ground with the light palette, whatever theme you are viewing in.
+  <p class="note">Figures export on a white ground — it is what gets published.
      Your browser will ask you to confirm each file.</p>
   <div class="acts">
     <button class="btn" onclick="document.getElementById('expDlg').close()">Cancel</button>
@@ -293,6 +312,7 @@ body.dragging *{cursor:grabbing!important}
 </dialog>
 <div class="toast" id="toast"></div>
 <div id="ghost"></div>
+
 
 <script>
 const DATA = {"folder":"","pixels":["a","b","c","d","e","f"],"scans":[]};
@@ -354,7 +374,7 @@ function nfmt(v){
 }
 function thumb(f){
   const s=byFile[f];
-  const W=200, H=92, mL=26, mR=5, mT=13, mB=13;        // margins leave room for axis numbers
+  const W=164, H=70, mL=22, mR=4, mT=9, mB=12;         // density 4b · the margins leave room for the tick numbers
   const iw=W-mL-mR, ih=H-mT-mB;
   const curves=PX.map(p=>s.channels[p]).filter(Boolean);
   if(!curves.length) return `<div class="thumb" style="height:${H}px"></div>`;
@@ -377,7 +397,7 @@ function thumb(f){
   const paths=use.map(c=>{
     let d='';
     for(let i=0;i<s.npts;i+=1){ const y=Y(c.curve[i]); d+=(d?'L':'M')+X(i).toFixed(1)+','+(y<-60?-60:y>H+60?H+60:y).toFixed(1); }
-    return `<path d="${d}" fill="none" stroke="var(--accent)" stroke-width="1.2" opacity=".8"/>`;
+    return `<path d="${d}" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".85"/>`;
   }).join('');
   const zeroY=Y(0), zeroX=XV(0);
   return `<svg class="thumb" viewBox="0 0 ${W} ${H}" role="img"
@@ -389,11 +409,10 @@ function thumb(f){
     <g clip-path="url(#${cid})">${paths}</g>
     <text class="ax" x="${mL-3}" y="${mT+4}" text-anchor="end">${nfmt(hi)}</text>
     <text class="ax" x="${mL-3}" y="${mT+ih}" text-anchor="end">${nfmt(lo)}</text>
-    <text class="ax" x="${mL-3}" y="${zeroY.toFixed(1)+3}" text-anchor="end" opacity="${zeroY>mT+9&&zeroY<mT+ih-9?1:0}">0</text>
+    <text class="ax" x="${mL-3}" y="${zeroY.toFixed(1)+3}" text-anchor="end" opacity="${zeroY>mT+8&&zeroY<mT+ih-8?1:0}">0</text>
     <text class="ax" x="${mL}" y="${H-3}" text-anchor="start">${v0}</text>
-    <text class="ax" x="${mL+iw}" y="${H-3}" text-anchor="end">${v1}</text>
     <text class="ax" x="${mL+iw/2}" y="${H-3}" text-anchor="middle" opacity=".7">V</text>
-    <text class="ax" x="2" y="8" text-anchor="start" opacity=".7">mA/cm²</text>
+    <text class="ax" x="${mL+iw}" y="${H-3}" text-anchor="end">${v1}</text>
   </svg>`;
 }
 function hashCode(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))|0; } return h; }
@@ -415,82 +434,93 @@ function pixelTable(f){
   return h+'</div>';
 }
 
+/* the number tab carries the group's series colour — the same colour it wears on the spine,
+   in the summary table and in the figure key, so one glance ties all four together */
+function groupChip(g){
+  if(!g) return {tab:'◦', bg:'var(--amber-soft)', ink:'var(--amber)'};
+  const p=plotGroups().find(x=>x.id===g.id);
+  return p ? {tab:String(p.num), bg:p.color, ink:p.ink}
+           : {tab:'–', bg:'var(--surface-3)', ink:'var(--muted)'};
+}
+
 function renderTiles(){
   const el=document.getElementById('tiles');
+  const rm=Object.keys(S.removed).length;
+  document.getElementById('rmInfo').innerHTML = rm
+    ? `${rm} removed · <button class="linky" data-act="restore">put back</button>` : '';
   if(!FILES.length){
     el.innerHTML = `<div class="emptyfolder">
       <p><b>No measurement files yet.</b></p>
       <p>Press <em>Import files…</em> above, or drag <code>.dat</code> files straight onto this pane.
          They are parsed here in your browser — nothing is uploaded anywhere.</p></div>`;
+    document.getElementById('folderCount').textContent='';
     document.getElementById('selInfo').textContent='';
-    document.getElementById('rmInfo').innerHTML = Object.keys(S.removed).length
-      ? `${Object.keys(S.removed).length} removed · <button class="linky" data-act="restore">put back</button>` : '';
     document.getElementById('btnGroup').disabled = true;
     return;
   }
   el.innerHTML = FILES.map(f=>{
-    const s=byFile[f], g=groupOfFile(f), cls=fileClass(f);
+    const s=byFile[f], g=groupOfFile(f), cls=fileClass(f), chip=groupChip(g);
     const n=PX.filter(p=>s.channels[p]).length, live=livePixels(f).length;
     const flagged=PX.some(p=>s.channels[p]&&s.channels[p].qc);
-    const badge = cls==='light' ? '' : `<span class="badge ${cls==='dark'?'dark':'low'}">${cls==='dark'?'dark scan':'low light'}</span>`;
-    return `<div class="tile ${sel.has(f)?'sel':''} ${g?'grouped':''}" data-f="${f}">
-      <button class="x" data-rmf="${f}" title="remove this file from the workspace">×</button>
-      <div class="top"><span class="chev" data-exp="${f}">${S.expanded[f]?'▾':'▸'}</span>
-        <span class="tname" data-name="${f}">${fname(f)}</span></div>
-      <div class="tmeta">${new Date(s.mtime).toISOString().slice(5,16).replace('T',' ')} · ${live}/${n} pixels</div>
-      <div>${badge}${flagged?'<span class="badge flagged">⚑ shunt</span>':''}</div>
+    const when=new Date(s.mtime).toISOString().slice(0,16).replace('T',' ');
+    return `<div class="tile ${sel.has(f)?'sel':''}" data-f="${f}" title="${esc(when)} · ${live} of ${n} pixels included">
+      <span class="tab" style="background:${chip.bg};color:${chip.ink}">${chip.tab}</span>
+      <div class="thead">
+        <span class="chev" data-exp="${f}">${S.expanded[f]?'▾':'▸'}</span>
+        <span class="tname" data-name="${f}">${fname(f)}</span>
+      </div>
       ${thumb(f)}
-      ${g ? (g.files.length>1||S.gnames[g.id]
-            ? `<span class="gtag" title="in group ${gname(g)}">▪ ${gname(g)}</span>`
-            : `<span class="gtag own">▪ own group</span>`)
-          : `<span class="gtag none">◦ ungrouped</span>`}
+      <div class="trow">
+        ${cls==='lowlight'?'<span class="badge low">low</span>':''}
+        ${cls==='dark'?'<span class="badge dark">dark</span>':''}
+        ${flagged?'<span class="badge flagged">⚑</span>':''}
+        ${live<n?`<span class="pxab">${live}/${n}</span>`:''}
+        ${!g ? '<span class="gtag none">ungrouped</span>'
+             : (gname(g)!==fname(f) ? `<span class="gtag">${esc(gname(g))}</span>` : '')}
+        <button class="x" data-rmf="${f}" title="take this file out of the workspace — the file on disk is untouched">×</button>
+      </div>
       ${S.expanded[f]?pixelTable(f):''}
     </div>`;
   }).join('');
-  const nsel=sel.size;
-  document.getElementById('selInfo').textContent = nsel? `${nsel} selected` : '';
-  const nrm=Object.keys(S.removed).length;
-  document.getElementById('rmInfo').innerHTML = nrm
-    ? `${nrm} removed · <button class="linky" data-act="restore">put back</button>` : '';
-  document.getElementById('btnGroup').disabled = nsel===0;
+  const grouped=FILES.filter(f=>groupOfFile(f)).length;
+  const px=FILES.filter(f=>groupOfFile(f)).reduce((n,f)=>n+livePixels(f).length,0);
+  document.getElementById('folderCount').textContent =
+    `${FILES.length} file${FILES.length===1?'':'s'} · ${grouped} grouped · ${px} px`;
+  document.getElementById('selInfo').textContent = sel.size ? `${sel.size} selected` : '';
+  document.getElementById('btnGroup').disabled = sel.size===0;
 }
-
 /* ---------------- explorer 2 ---------------- */
 function renderGroups(){
   const el=document.getElementById('groups');
-  const NUMS={}; plotGroups().forEach(g=>NUMS[g.id]=g.num);
+  const P={}; plotGroups().forEach(g=>P[g.id]=g);
   el.innerHTML = S.groups.map(g=>{
     const files=g.files.filter(f=>byFile[f]);
     const px=files.reduce((n,f)=>n+livePixels(f).length,0);
     const tot=files.reduce((n,f)=>n+PX.filter(p=>byFile[f].channels[p]).length,0);
     const solo=files.length===1;
-    const st=gState(g), num=NUMS[g.id];
-    return `<div class="gcard ${solo?'solo':''} ${st==='full'?'gsel':st==='part'?'gpart':''}" data-g="${g.id}">
-      <button class="x" data-del="${g.id}" title="remove this group">×</button>
-      ${num?`<span class="gnum">${num}</span>`:''}<span class="gname" data-gname="${g.id}">${gname(g)}</span>
-      <span class="gmeta">${solo?'':files.length+' files · '}${px} of ${tot} px</span>
-      ${solo?'':`<div class="members">${files.map(f=>`<span class="mem"><span>${fname(f)}</span><button data-pull="${g.id}::${f}" title="take out of group">×</button></span>`).join('')}</div>`}
+    const st=gState(g), p=P[g.id];
+    const spine = p ? `background:${p.color};color:${p.ink}` : 'background:var(--surface-3);color:var(--muted)';
+    return `<div class="gcard ${st==='full'?'gsel':st==='part'?'gpart':''}" data-g="${g.id}">
+      <div class="gspine" style="${spine}">${p?p.num:'–'}</div>
+      <div class="gbody">
+        <div class="grow1">
+          <span class="gname" data-gname="${g.id}">${gname(g)}</span>
+          <span class="gmeta">${solo?'':files.length+' files · '}${px}/${tot} px</span>
+          <button class="x" data-del="${g.id}" title="remove this group — the files stay in the folder">×</button>
+        </div>
+        ${solo?'':`<div class="members">${files.map(f=>`<span class="mem"><span>${fname(f)}</span><button data-pull="${g.id}::${f}" title="take out of group">×</button></span>`).join('')}</div>`}
+      </div>
     </div>`;
   }).join('');
   const ungrouped=FILES.filter(f=>!groupOfFile(f)).length;
+  const touched=touchedGroups().length;
   document.getElementById('grpInfo').textContent =
-    `${S.groups.length} group${S.groups.length===1?'':'s'}${ungrouped?` · ${ungrouped} file${ungrouped===1?'':'s'} ungrouped`:''}` +
-    (touchedGroups().length?` · ${touchedGroups().length} selected`:'');
-  document.getElementById('btnMerge').disabled = touchedGroups().length<2;
-  document.getElementById('btnDelG').disabled = touchedGroups().length===0;
+    `${S.groups.length} group${S.groups.length===1?'':'s'}` +
+    (ungrouped?` · ${ungrouped} ungrouped`:'') + (touched?` · ${touched} selected`:'');
+  document.getElementById('btnMerge').disabled = touched<2;
+  document.getElementById('btnDelG').disabled = touched===0;
 }
-
-function renderStatus(){
-  const grouped=FILES.filter(f=>groupOfFile(f));
-  const px=grouped.reduce((n,f)=>n+livePixels(f).length,0);
-  const lightPx=grouped.reduce((n,f)=>n+livePixels(f).filter(p=>byFile[f].channels[p].mode==='light').length,0);
-  document.getElementById('status').innerHTML =
-    `<span><b>${S.groups.length}</b> groups</span>
-     <span><b>${grouped.length}</b> of ${FILES.length} files grouped</span>
-     <span><b>${px}</b> pixels included · ${lightPx} illuminated</span>
-     <span style="color:var(--muted)">grouping is step one — analysis reads exactly this</span>`;
-}
-function render(){ renderTiles(); renderGroups(); renderStatus(); renderResults(); save(); }
+function render(){ renderTiles(); renderGroups(); renderResults(); save(); }
 
 /* ---------------- selection ---------------- */
 function selectOnly(f){ sel.clear(); sel.add(f); lastClicked=f; }
@@ -573,7 +603,7 @@ window.addEventListener('mouseup',()=>{ if(band){ band=null; bandEl.hidden=true;
 const ghost=document.getElementById('ghost');
 const gwrap=document.getElementById('groups');
 const pane2=document.getElementById('pane2'), dz=document.getElementById('dropzone');
-let drag=null, pending=null, renameCand=null;
+let drag=null, pending=null, renameCand=null, unselCand=null;
 function clearDrop(){ gwrap.querySelectorAll('.gcard').forEach(c=>c.classList.remove('drop')); dz.classList.remove('drop'); pane2.classList.remove('armed'); }
 
 tiles.addEventListener('mousedown',e=>{
@@ -581,12 +611,13 @@ tiles.addEventListener('mousedown',e=>{
   if(e.target.closest('input') || e.target.closest('[data-exp]') || e.target.closest('[data-rmf]')) return;
   const tl=e.target.closest('.tile'); if(!tl) return;
   const f=tl.dataset.f, onName=!!e.target.closest('[data-name]');
-  renameCand=null;
+  renameCand=null; unselCand=null;
   if(e.ctrlKey||e.metaKey){ toggle(f); render(); }
   else if(e.shiftKey && lastClicked){ range(lastClicked,f); lastClicked=f; render(); }
   else if(!sel.has(f)){ selectOnly(f); render(); }
   else if(onName && sel.size===1){ renameCand={kind:'file', id:f}; }
-  else { sel.delete(f); lastClicked=f; render(); }          // click again on a selected tile → unselect
+  else { unselCand={kind:'file', id:f}; }   // click again on a selected tile → unselect, but only if it
+                                            // turns out to be a click: a drag must keep what you grabbed
   pending = sel.size ? {x:e.clientX,y:e.clientY,type:'files',payload:[...sel]} : null;
   e.preventDefault();
 });
@@ -595,6 +626,7 @@ gwrap.addEventListener('mousedown',e=>{
   if(e.button!==0) return;
   if(e.target.closest('button')) return;
   const onGName=!!e.target.closest('[data-gname]');
+  renameCand=null; unselCand=null;
   const c=e.target.closest('.gcard');
   if(!c){ if(sel.size){ sel.clear(); render(); } return; }
   const id=c.dataset.g, ids=S.groups.map(g=>g.id);
@@ -612,7 +644,7 @@ gwrap.addEventListener('mousedown',e=>{
   } else if(!soleFull){
     sel=new Set(g.files); lastG=id; lastClicked=g.files[0]; render();
   } else if(onGName){ renameCand={kind:'group', id}; }
-  else { g.files.forEach(f=>sel.delete(f)); lastG=id; render(); }   // click again on a selected card → unselect
+  else { unselCand={kind:'group', id}; }   // same rule on this side
   const touched=touchedGroups().map(x=>x.id);
   const payload = touched.includes(id) ? touched : (gState(g)==='none' ? [] : [id]);
   pending = payload.length ? {x:e.clientX,y:e.clientY,type:'group',payload} : null;
@@ -622,7 +654,7 @@ gwrap.addEventListener('mousedown',e=>{
 window.addEventListener('mousemove',e=>{
   if(pending && !drag && Math.hypot(e.clientX-pending.x, e.clientY-pending.y) > 5){
     drag={type:pending.type, payload:pending.payload};
-    renameCand=null;
+    renameCand=null; unselCand=null;
     ghost.textContent = drag.type==='group'
       ? (drag.payload.length===1 ? 'merge into…' : `merge ${drag.payload.length} groups into…`)
       : (drag.payload.length===1 ? fname(drag.payload[0]) : drag.payload.length+' files');
@@ -649,6 +681,12 @@ window.addEventListener('mouseup',e=>{
     else if(card && !drag.payload.includes(card.dataset.g)){ mergeGroups(drag.payload, card.dataset.g); }
     drag=null; pending=null; return;
   }
+  if(pending && unselCand){
+    const u=unselCand; unselCand=null; pending=null;
+    if(u.kind==='file'){ sel.delete(u.id); lastClicked=u.id; }
+    else { const g=S.groups.find(x=>x.id===u.id); if(g) g.files.forEach(f=>sel.delete(f)); lastG=u.id; }
+    render(); return;
+  }
   if(pending && renameCand){
     const rc=renameCand; renameCand=null; pending=null;
     if(rc.kind==='file'){
@@ -658,7 +696,7 @@ window.addEventListener('mouseup',e=>{
     }
     return;
   }
-  pending=null;
+  pending=null; unselCand=null;
 });
 
 function detach(files){
@@ -870,18 +908,29 @@ pane1.addEventListener('drop',e=>{
 });
 
 /* ================= results: group plots, table, export ================= */
-// first six validated all-pairs on a light ground (normal-vision ΔE 15.6, CVD 6.9 relieved by direct labels);
-// slots 7–8 are leftovers and no longer guaranteed to separate — the axis labels carry identity there.
+/* Open palette — no ceiling on how many groups you plot. The first six were checked all-pairs on a
+   light ground; past that the number on the marker, the spine and the key carries identity, not the hue. */
 const SERIES_LIGHT = ['#2a78d6','#1baf7a','#eda100','#008300','#4a3aa7','#e34948','#eb6834','#e87ba4'];
+/* mirror them into CSS so the tab, the spine and the table swatch can never drift from the figure */
+SERIES_LIGHT.forEach((c,i)=>document.documentElement.style.setProperty('--series-'+(i+1), c));
+
+/* white or ink on a series colour, whichever reads better — the group numbers ride on these chips */
+const _lin = v => v<=0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4);
+function keyInk(hex){
+  const c=hex.replace('#','');
+  const L = 0.2126*_lin(parseInt(c.slice(0,2),16)/255)
+          + 0.7152*_lin(parseInt(c.slice(2,4),16)/255)
+          + 0.0722*_lin(parseInt(c.slice(4,6),16)/255);
+  return (1.05/(L+0.05)) >= ((L+0.05)/0.0625) ? '#FFFFFF' : '#11161A';
+}
 const METRICS = [
   {k:'jsc', panel:'a', label:'J', sub:'SC', unit:'(mA cm⁻²)', dp:2},
   {k:'voc', panel:'b', label:'V', sub:'OC', unit:'(V)',                dp:3},
   {k:'ff',  panel:'c', label:'FF', sub:'',  unit:'(%)',                dp:1},
   {k:'pce', panel:'d', label:'PCE', sub:'', unit:'(%)',                dp:2},
 ];
-const seriesColor = i => SERIES_LIGHT[i % 8];
-const hollow = i => i >= 8;                       // 2nd cycle: same hue, open marker
-
+const seriesColor = i => SERIES_LIGHT[i % SERIES_LIGHT.length];
+const hollow = i => i >= SERIES_LIGHT.length;     // second cycle: same hue, open marker
 /* deterministic jitter so the figure never moves between renders */
 function jitter(key, span){
   let h=0; for(let i=0;i<key.length;i++) h=(h*31+key.charCodeAt(i))|0;
@@ -916,7 +965,8 @@ function plotGroups(){
     });
     if(!vals.pce.length) return;
     const i=out.length;                       // numbering is contiguous over plotted groups only
-    out.push({id:g.id, num:i+1, name:gname(g), color:seriesColor(i), open:hollow(i),
+    const col=seriesColor(i);
+    out.push({id:g.id, num:i+1, name:gname(g), color:col, ink:keyInk(col), open:hollow(i),
               vals, keys, n:vals.pce.length, samples:samples.size, files:g.files.slice(), best});
   });
   return out;
@@ -932,18 +982,26 @@ function catLines(name){
   return parts.map(p=> p.length>16 ? p.slice(0,15)+'…' : p).slice(0,2);
 }
 
-/* ---- the four panels ---- */
-function paramFigure(T){
+/* ---- the four panels · a–d across one row by default ---- */
+function paramFigure(T, opt){
+  opt = opt || {};
   const G=plotGroups();
   if(!G.length) return null;
-  const pw=Math.max(196, G.length*46), ph=150;
-  const mL=54, mR=14, mT=24, mB=30, gapX=26, gapY=16;
+  const cols   = opt.cols   || 4;
+  const pwPer  = opt.pwPer  || 34;
+  const gapX   = opt.gapX   || 24, gapY = opt.gapY || 18;
+  const lSize  = opt.letterSize || 13, lX = opt.panelLetterX || 0;
+  const pw=Math.max(140, G.length*pwPer);
+  /* the panel grows taller as it grows wider, so ten groups read like three and not like a strip */
+  const ph=opt.ph || Math.round(Math.max(112, Math.min(200, pw*0.52)));
+  const mL=52, mR=12, mT=22, mB=28;
   const panelW=mL+pw+mR, panelH=mT+ph+mB;
-  const W=panelW*2+gapX, H=panelH*2+gapY;
+  const rows=Math.ceil(METRICS.length/cols);
+  const W=panelW*cols+gapX*(cols-1), H=panelH*rows+gapY*(rows-1);
   let out='';
 
   METRICS.forEach((M,mi)=>{
-    const ox=(mi%2)*(panelW+gapX), oy=Math.floor(mi/2)*(panelH+gapY);
+    const ox=(mi%cols)*(panelW+gapX), oy=Math.floor(mi/cols)*(panelH+gapY);
     const all=G.flatMap(g=>g.vals[M.k]);
     let lo=Math.min(...all), hi=Math.max(...all);
     G.forEach(g=>{ const m=mean(g.vals[M.k]), s=sd(g.vals[M.k]); lo=Math.min(lo,m-s); hi=Math.max(hi,m+s); });
@@ -955,7 +1013,7 @@ function paramFigure(T){
     const Y=v=>oy+mT+(hi-v)/(hi-lo)*ph;
     const band=Math.min(26,(pw/G.length)*0.5);
 
-    out+=`<text x="${ox+6}" y="${oy+14}" font-weight="700" font-size="12" fill="${T.ink}">${M.panel}</text>`;
+    out+=`<text x="${ox+lX}" y="${oy+lSize}" font-weight="700" font-size="${lSize}" fill="${T.ink}">${M.panel}</text>`;
     out+=`<line x1="${ox+mL}" y1="${oy+mT}" x2="${ox+mL}" y2="${oy+mT+ph}" stroke="${T.ink}" stroke-width="1"/>`;
     out+=`<line x1="${ox+mL}" y1="${oy+mT+ph}" x2="${ox+mL+pw}" y2="${oy+mT+ph}" stroke="${T.ink}" stroke-width="1"/>`;
     ticks.forEach(tv=>{
@@ -967,7 +1025,7 @@ function paramFigure(T){
     const axTitle = M.sub
       ? `${M.label}<tspan baseline-shift="sub" font-size="7">${M.sub}</tspan> ${M.unit}`
       : `${M.label} ${M.unit}`;
-    out+=`<text transform="translate(${ox+13},${oy+mT+ph/2}) rotate(-90)" text-anchor="middle"
+    out+=`<text transform="translate(${ox+12},${oy+mT+ph/2}) rotate(-90)" text-anchor="middle"
             font-size="10" fill="${T.ink}">${axTitle}</text>`;
 
     G.forEach((g,gi)=>{
@@ -984,17 +1042,18 @@ function paramFigure(T){
       const d=5.2, cy=Y(m);
       out+=`<path d="M${xs},${(cy-d).toFixed(1)} L${(xs+d).toFixed(1)},${cy.toFixed(1)} L${xs},${(cy+d).toFixed(1)} L${(xs-d).toFixed(1)},${cy.toFixed(1)} Z"
               fill="${g.open?T.surface:g.color}" stroke="${g.open?g.color:T.ink}" stroke-width="1"/>`;
-      out+=`<text x="${xs}" y="${oy+mT+ph+16}" text-anchor="middle" font-size="11" fill="${T.ink}">${g.num}</text>`;
+      out+=`<text x="${xs}" y="${oy+mT+ph+15}" text-anchor="middle" font-size="11" font-family="${MONO}" fill="${T.ink}">${g.num}</text>`;
     });
   });
   return {svg:out, W, H};
 }
-
-/* ---- J(V) overlay ---- */
-function jvFigure(T){
+/* ---- J(V) overlay · panel e ---- */
+function jvFigure(T, opt){
+  opt = opt || {};
   const G=plotGroups();
   if(!G.length) return null;
-  const W=440, H=300, mL=58, mR=14, mT=14, mB=44;
+  const W=opt.W||460, H=opt.H||268, mL=56, mR=12, mT=14, mB=42;
+  const lSize=opt.letterSize||13, lX=opt.panelLetterX||0;
   const pw=W-mL-mR, ph=H-mT-mB;
   let jmin=0, vmax=0;
   const items=[];
@@ -1010,7 +1069,10 @@ function jvFigure(T){
   const lo=jmin*1.18, hi=-jmin*0.30;
   const X=v=>mL+(v-v0)/(v1-v0)*pw;
   const Y=j=>mT+(hi-j)/(hi-lo)*ph;
-  let out=`<clipPath id="jvclip"><rect x="${mL}" y="${mT}" width="${pw}" height="${ph}"/></clipPath>`;
+  const cid='jvclip'+Math.round(W);
+  let out='';
+  if(opt.letter) out+=`<text x="${lX}" y="${lSize}" font-weight="700" font-size="${lSize}" fill="${T.ink}">${opt.letter}</text>`;
+  out+=`<clipPath id="${cid}"><rect x="${mL}" y="${mT}" width="${pw}" height="${ph}"/></clipPath>`;
   out+=`<rect x="${mL}" y="${mT}" width="${pw}" height="${ph}" fill="none" stroke="${T.line}"/>`;
   niceTicks(lo,hi,5).forEach(tv=>{
     const y=Y(tv); if(y<mT-1||y>mT+ph+1) return;
@@ -1023,7 +1085,7 @@ function jvFigure(T){
     out+=`<line x1="${x.toFixed(1)}" y1="${mT+ph}" x2="${x.toFixed(1)}" y2="${mT+ph+4}" stroke="${T.ink}"/>`;
     out+=`<text x="${x.toFixed(1)}" y="${mT+ph+15}" text-anchor="middle" font-size="9" fill="${T.ink}">${Number(tv.toFixed(6))}</text>`;
   });
-  out+=`<g clip-path="url(#jvclip)">`;
+  out+=`<g clip-path="url(#${cid})">`;
   const labels=[];
   items.forEach(({s,c,color,num})=>{
     let d='', firstY=null;
@@ -1042,29 +1104,100 @@ function jvFigure(T){
   for(let i=1;i<labels.length;i++) if(labels[i].y-labels[i-1].y<11) labels[i].y=labels[i-1].y+11;
   const overflow=labels.length?Math.max(0,labels[labels.length-1].y-(mT+ph-4)):0;
   if(overflow>0) labels.forEach(l=>l.y-=overflow);
-  labels.forEach(l=>{ out+=`<text x="${mL+5}" y="${(l.y+3.5).toFixed(1)}" font-size="10" font-weight="700" fill="${l.color}">${l.num}</text>`; });
+  labels.forEach(l=>{ out+=`<text x="${mL+5}" y="${(l.y+3.5).toFixed(1)}" font-size="10" font-weight="700" font-family="${MONO}" fill="${l.color}">${l.num}</text>`; });
   out+=`<text x="${mL+pw/2}" y="${H-6}" text-anchor="middle" font-size="10" fill="${T.ink}">Voltage (V)</text>`;
-  out+=`<text transform="translate(14,${mT+ph/2}) rotate(-90)" text-anchor="middle" font-size="10" fill="${T.ink}">Current density (mA cm⁻²)</text>`;
+  out+=`<text transform="translate(13,${mT+ph/2}) rotate(-90)" text-anchor="middle" font-size="10" fill="${T.ink}">Current density (mA cm⁻²)</text>`;
   return {svg:out, W, H};
 }
-
-function keySVG(T,W,withBest){
-  const G=plotGroups(); if(!G.length) return {svg:'',H:0};
-  const colW=withBest?300:210;
-  const perRow=Math.max(1,Math.floor((W-16)/colW)), rows=Math.ceil(G.length/perRow);
-  let out=`<line x1="8" y1="6" x2="${W-8}" y2="6" stroke="${T.line}"/>`;
+/* ---- one key for the whole plate: swatch, number, name, then the provenance line ---- */
+const MONO = "'IBM Plex Mono', ui-monospace, monospace";
+const clip = (s,n) => s.length<=n ? s : (n>14 ? s.slice(0,n-10)+'…'+s.slice(-9) : s.slice(0,Math.max(1,n-1))+'…');
+function richKey(G,T,W,cols,withBest){
+  const colW=W/cols, rowH=46;
+  let out='';
   G.forEach((g,i)=>{
-    const x=10+(i%perRow)*colW, y=22+Math.floor(i/perRow)*14;
-    out+=`<rect x="${x}" y="${y-8}" width="10" height="10" rx="2" fill="${g.open?T.surface:g.color}" stroke="${g.color}"/>`;
-    out+=`<text x="${x+15}" y="${y}" font-size="9" font-weight="700" fill="${T.ink}">${g.num}</text>`;
-    let label=`${g.name}  ·  n = ${g.n} px, ${g.samples} sample${g.samples===1?'':'s'}`;
-    if(withBest && g.best) label=`${g.name}  —  ${fname(g.best.file)} · pixel ${g.best.px} · PCE ${g.best.c.pce.toFixed(2)}%`;
-    const eff = perRow===1 ? W-52 : colW-12;
-    const maxCh = Math.floor(eff/4.95);
-    if(label.length>maxCh) label=label.slice(0,maxCh-1)+'…';
-    out+=`<text x="${x+26}" y="${y}" font-size="9" fill="${T.ink}">${esc(label)}</text>`;
+    const x=(i%cols)*colW, y=Math.floor(i/cols)*rowH;
+    out+=`<rect x="${x}" y="${y}" width="11" height="11" fill="${g.open?T.surface:g.color}" stroke="${g.color}"/>`;
+    out+=`<text x="${x+18}" y="${y+10}" font-size="11" font-weight="700" font-family="${MONO}" fill="${T.ink}">${g.num}</text>`;
+    out+=`<text x="${x+34}" y="${y+10}" font-size="11" font-family="${MONO}" fill="${T.ink}">${esc(clip(g.name,Math.floor((colW-44)/6.7)))}</text>`;
+    let line=`n = ${g.n} px, ${g.samples} sample${g.samples===1?'':'s'}`;
+    if(withBest && g.best) line+=`  ·  best ${fname(g.best.file)} px ${g.best.px}, PCE ${g.best.c.pce.toFixed(2)}%`;
+    out+=`<text x="${x+34}" y="${y+25}" font-size="9" font-family="${MONO}" fill="${T.muted}">${esc(clip(line,Math.floor((colW-44)/5.4)))}</text>`;
   });
-  return {svg:out, H:rows*14+22};
+  return {svg:out, H:Math.ceil(G.length/cols)*rowH};
+}
+const capLine = (l,i) => `<text x="0" y="${i*14}" font-size="9.5" fill="#5A6C72">${esc(l)}</text>`;
+const CAP_AD = 'Panels a–d — one circle per included illuminated pixel, jittered horizontally; the bar and diamond mark the group mean, whiskers ±1 SD.';
+const CAP_E  = 'Panel e — the best-PCE pixel of each group, labelled at its J_SC.';
+const CAP_N  = 'The numbers are the same groups in every panel, in the order they were built. Mean, SD, min, max and n travel in the exported CSV.';
+
+/* one builder, three slices: the whole plate on screen, panels a–d or panel e on export */
+function plate(T, opt){
+  opt = opt || {};
+  const want = opt.want || 'all';
+  const G=plotGroups(); if(!G.length) return null;
+  const M=16;                                       // outer margin inside the frame
+
+  if(want==='params'){
+    const pf=paramFigure(T,{cols:4, pwPer:40, ph:150});
+    if(!pf) return null;
+    const k=richKey(G,T,pf.W,Math.min(3,G.length)||1,false);
+    const cap=[CAP_AD, CAP_N];
+    const keyY=pf.H+26, capY=keyY+k.H+26;
+    return {W:pf.W+M*2, H:capY+cap.length*14+6, svg:
+      `<g transform="translate(${M},14)">${pf.svg}</g>`+
+      `<text x="${M}" y="${keyY+4}" font-size="9" font-weight="700" letter-spacing="1.4" fill="${T.muted}">KEY</text>`+
+      `<g transform="translate(${M},${keyY+18})">${k.svg}</g>`+
+      `<line x1="${M}" y1="${capY-14}" x2="${pf.W+M}" y2="${capY-14}" stroke="${T.line}"/>`+
+      `<g transform="translate(${M},${capY})">${cap.map(capLine).join('')}</g>`};
+  }
+
+  if(want==='jv'){
+    const jvW=540, jvH=340, keyW=600;
+    const jf=jvFigure(T,{W:jvW,H:jvH,letter:'e'});
+    if(!jf) return null;
+    const k=richKey(G,T,keyW,1,true);
+    const cap=[CAP_E, CAP_N];
+    const W=M*2+jvW+24+keyW;
+    const bodyH=Math.max(jf.H, 18+k.H), capY=14+bodyH+26;
+    return {W, H:capY+cap.length*14+6, svg:
+      `<g transform="translate(${M},14)">${jf.svg}</g>`+
+      `<text x="${M+jvW+24}" y="${18}" font-size="9" font-weight="700" letter-spacing="1.4" fill="${T.muted}">KEY</text>`+
+      `<g transform="translate(${M+jvW+24},${32})">${k.svg}</g>`+
+      `<line x1="${M}" y1="${capY-14}" x2="${W-M}" y2="${capY-14}" stroke="${T.line}"/>`+
+      `<g transform="translate(${M},${capY})">${cap.map(capLine).join('')}</g>`};
+  }
+
+  /* 'all' — the reading surface: a–d across the top, a rule, then e beside the key */
+  const pf=paramFigure(T,{cols:4, pwPer:34, ph:112});
+  const jvW=460, jvH=268;
+  const jf=jvFigure(T,{W:jvW,H:jvH,letter:'e'});
+  if(!pf||!jf) return null;
+  const keyMin=620;
+  const inner=Math.max(pf.W, jvW+24+keyMin);
+  const W=inner+M*2, keyX=M+jvW+24, keyW=W-M-keyX;
+  const k=richKey(G,T,keyW,2,false);
+  const src=G.filter(g=>g.best).map(g=>`${g.num}   ${fname(g.best.file)} · px ${g.best.px} · PCE ${g.best.c.pce.toFixed(2)}%`);
+  const srcCols=2, srcSvg=src.map((l,i)=>{
+    const x=(i%srcCols)*(keyW/srcCols), y=Math.floor(i/srcCols)*15;
+    return `<text x="${x}" y="${y}" font-size="9" font-family="${MONO}" fill="${T.ink}">${esc(clip(l,Math.floor((keyW/srcCols-8)/5.4)))}</text>`;
+  }).join('');
+  const srcH=Math.ceil(src.length/srcCols)*15;
+  const cap=[CAP_AD, CAP_E, CAP_N];
+  const ruleY=pf.H+20, row2Y=ruleY+22;
+  const keyBlockH=18+k.H+26+14+srcH;
+  const bodyH=Math.max(jf.H, keyBlockH);
+  const capY=row2Y+bodyH+22;
+  return {W, H:capY+cap.length*14+6, svg:
+    `<g transform="translate(${M},14)">${pf.svg}</g>`+
+    `<line x1="${M}" y1="${ruleY}" x2="${W-M}" y2="${ruleY}" stroke="${T.ink}" stroke-width="1"/>`+
+    `<g transform="translate(${M},${row2Y})">${jf.svg}</g>`+
+    `<text x="${keyX}" y="${row2Y+4}" font-size="9" font-weight="700" letter-spacing="1.4" fill="${T.muted}">KEY</text>`+
+    `<g transform="translate(${keyX},${row2Y+18})">${k.svg}</g>`+
+    `<text x="${keyX}" y="${row2Y+18+k.H+14}" font-size="9" font-weight="700" letter-spacing="1.4" fill="${T.muted}">PANEL E · CURVE SOURCE</text>`+
+    `<g transform="translate(${keyX},${row2Y+18+k.H+32})">${srcSvg}</g>`+
+    `<line x1="${M}" y1="${capY-14}" x2="${W-M}" y2="${capY-14}" stroke="${T.line}"/>`+
+    `<g transform="translate(${M},${capY})">${cap.map(capLine).join('')}</g>`};
 }
 const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
@@ -1085,43 +1218,42 @@ function summaryRows(){
     voc:mean(g.vals.voc), vocSD:sd(g.vals.voc),
     ff:mean(g.vals.ff),   ffSD:sd(g.vals.ff),
     pce:mean(g.vals.pce), pceSD:sd(g.vals.pce),
-    color:g.color
+    color:g.color, ink:g.ink
   }));
 }
 function renderResults(){
-  const T=THEME_EXPORT;      // figures commit to a white ground in both themes: it is what gets published
-  const info=document.getElementById('resInfo');
-  const pf=paramFigure(T), jf=jvFigure(T), rows=summaryRows();
-  const gp=plotGroups();
-  info.textContent = gp.length
-    ? `${gp.length} group${gp.length===1?'':'s'} · ${gp.reduce((n,g)=>n+g.n,0)} illuminated pixels`
+  const T=THEME_EXPORT;      // the figures commit to a white ground: it is what gets published
+  const gp=plotGroups(), rows=summaryRows();
+  document.getElementById('resInfo').textContent = gp.length
+    ? `${gp.length} group${gp.length===1?'':'s'} · ${gp.reduce((n,g)=>n+g.n,0)} illuminated px · ${new Set(gp.flatMap(g=>g.files)).size} files`
     : 'nothing to plot yet';
   document.getElementById('btnExport').disabled = !gp.length;
 
-  const pk = pf ? keySVG(T, pf.W, false) : {svg:'',H:0};
-  document.getElementById('figParams').innerHTML = pf
-    ? `<svg viewBox="0 0 ${pf.W} ${pf.H+pk.H}" class="fig" role="img" aria-label="Jsc, Voc, FF and PCE by group">${pf.svg}<g transform="translate(0,${pf.H})">${pk.svg}</g></svg>`
-    : `<p class="empty">Build a group in explorer 2 and its pixels appear here.</p>`;
-  const over=document.getElementById('figNote');
-  over.textContent = gp.length>6
-    ? `${gp.length} groups — the colour set is validated for six simultaneous series; past that, read identity from the axis labels and the legend, not the hue.`
-    : '';
-
-  const lg = jf ? keySVG(T, jf.W, true) : {svg:'',H:0};
-  document.getElementById('figJV').innerHTML = jf
-    ? `<svg viewBox="0 0 ${jf.W} ${jf.H+lg.H}" class="fig" role="img" aria-label="J(V) curves by group">${jf.svg}<g transform="translate(0,${jf.H})">${lg.svg}</g></svg>`
-    : '';
-
+  /* the table leads: it is the number you write down, the plate below is the evidence for it */
   document.getElementById('tblWrap').innerHTML = rows.length ? `
+    <div class="blockhead"><b>Summary</b>
+      <span>mean ± sd over included illuminated pixels · panel letters point into the figure below</span></div>
     <table class="summary"><thead><tr>
-      <th style="text-align:center">#</th><th>Group</th><th>J<sub>SC</sub> (mA cm⁻²)</th><th>V<sub>OC</sub> (V)</th><th>FF (%)</th><th>PCE (%)</th>
+      <th>#</th><th>Group</th>
+      <th>J<sub>SC</sub> mA cm⁻² <em>a</em></th><th>V<sub>OC</sub> V <em>b</em></th>
+      <th>FF % <em>c</em></th><th>PCE % <em>d</em></th><th>n px / sub</th>
     </tr></thead><tbody>${rows.map(r=>`<tr>
-      <td style="text-align:center;font-family:var(--f-mono);font-weight:600">${r.num}</td>
-      <td><i style="background:${r.color}"></i>${esc(r.name)}</td>
-      <td>${r.jsc.toFixed(2)}</td><td>${r.voc.toFixed(3)}</td><td>${r.ff.toFixed(2)}</td><td>${r.pce.toFixed(2)}</td>
-    </tr>`).join('')}</tbody></table>
-    <p class="tnote">Mean over included illuminated pixels. ${rows.map(r=>`${esc(r.name)} n=${r.n}/${r.samples}`).join(' · ')}
-      — pixels/substrates. SD, min and max travel in the exported CSV.</p>` : '';
+      <td><span class="gnumchip" style="background:${r.color};color:${r.ink}">${r.num}</span></td>
+      <td>${esc(r.name)}</td>
+      <td>${r.jsc.toFixed(2)}<span class="sd"> ± ${r.jscSD.toFixed(2)}</span></td>
+      <td>${r.voc.toFixed(3)}<span class="sd"> ± ${r.vocSD.toFixed(3)}</span></td>
+      <td>${r.ff.toFixed(1)}<span class="sd"> ± ${r.ffSD.toFixed(1)}</span></td>
+      <td>${r.pce.toFixed(2)}<span class="sd"> ± ${r.pceSD.toFixed(2)}</span></td>
+      <td>${r.n} / ${r.samples}</td>
+    </tr>`).join('')}</tbody></table>` : '';
+
+  const pl = plate(T,{want:'all'});
+  document.getElementById('plateWrap').innerHTML = pl
+    ? `<div class="blockhead"><b>Figure 1 · a–e</b>
+         <span>one plate, one key · white ground in the app and in the export, because it is what gets published</span></div>
+       <svg viewBox="0 0 ${pl.W} ${pl.H}" class="fig" role="img"
+            aria-label="Jsc, Voc, FF, PCE and J(V) curves by group">${pl.svg}</svg>`
+    : `<p class="empty">Build a group on the right and its pixels appear here.</p>`;
 }
 
 /* ---- export ---- */
@@ -1189,14 +1321,14 @@ async function runExport(){
   const done=[], failed=[];
   const push=r=>{ (r.ok?done:failed).push(r.ok?(r.name+(r.downgraded?' (as .txt)':'')):`${r.name}: ${r.why}`); };
 
-  async function savePlot(fig, extra, base){
+  async function savePlot(fig, base){
     if(!fig) return;
-    const doc=svgDoc(fig.svg+(extra?extra.svg:''), fig.W, fig.H, T, extra?extra.H:0);
+    const doc=svgDoc(fig.svg, fig.W, fig.H, T, 0);
     if(fmt==='png') push(await saveOne(`${base}_${stamp}.png`, await svgToPng(doc,3)));
     else push(await saveOne(`${base}_${stamp}.svg`, doc, `${base}_${stamp}.txt`, doc));
   }
-  if(wantP) await savePlot(paramFigure(T), null, 'jv_parameters');
-  if(wantJ){ const jf=jvFigure(T); await savePlot(jf, jf?legendSVG(T,jf.W):null, 'jv_curves'); }
+  if(wantP) await savePlot(plate(T,{want:'params'}), 'jv_parameters');
+  if(wantJ) await savePlot(plate(T,{want:'jv'}), 'jv_curves');
   if(wantT){ const csv=tableCSV(); push(await saveOne(`jv_summary_${stamp}.csv`, csv, `jv_summary_${stamp}.txt`, csv)); }
 
   document.getElementById('expDlg').close();

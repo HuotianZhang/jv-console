@@ -8,3 +8,16 @@ __pycache__/
 *.pyc
 .DS_Store
 node_modules/
+
+# unpacking leftovers
+_to_delete/
+
+# design work stays out of the repo
+# design-screens/ holds screenshots of the populated app and design-in/jv-data.js
+# hard-codes the 4 August group means, so these carry real measurement values too
+design-system/
+design-screens/
+design-in/
+DESIGN_BRIEF.md
+DESIGN_NOTES.md
+tools/mk_design_system.py
