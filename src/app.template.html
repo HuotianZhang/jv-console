@@ -1,0 +1,1241 @@
+<title>JV Group Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
+
+<style>
+:root{
+  --ground:#F3F6F6; --surface:#FFFFFF; --surface-2:#EAEFEF; --surface-3:#DFE7E7;
+  --ink:#0F1B21; --ink-2:#2C3E45; --muted:#5A6C72;
+  --line:#D2DBDC; --line-soft:#E3EAEA;
+  --accent:#0B6E75; --accent-soft:#DCEEEE; --accent-mid:#8FC5C8;
+  --amber:#A85410; --amber-soft:#F7EADC;
+  --flag:#93262F; --flag-soft:#F7E2E2;
+  --f-display:"Source Serif 4", Georgia, serif;
+  --f-body:"IBM Plex Sans", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --ground:#0A1216; --surface:#101C21; --surface-2:#16252B; --surface-3:#1E3038;
+  --ink:#E6EEEF; --ink-2:#C2D2D4; --muted:#8AA0A5;
+  --line:#26383F; --line-soft:#1B2A30;
+  --accent:#4FBCC0; --accent-soft:#0E3033; --accent-mid:#2A6E73;
+  --amber:#E29B50; --amber-soft:#2B1F14;
+  --flag:#E4818B; --flag-soft:#331C1F;
+}}
+:root[data-theme="dark"]{
+  --ground:#0A1216; --surface:#101C21; --surface-2:#16252B; --surface-3:#1E3038;
+  --ink:#E6EEEF; --ink-2:#C2D2D4; --muted:#8AA0A5;
+  --line:#26383F; --line-soft:#1B2A30;
+  --accent:#4FBCC0; --accent-soft:#0E3033; --accent-mid:#2A6E73;
+  --amber:#E29B50; --amber-soft:#2B1F14;
+  --flag:#E4818B; --flag-soft:#331C1F;
+}
+
+*{box-sizing:border-box}
+body{margin:0; background:var(--ground); color:var(--ink); font-family:var(--f-body); font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased}
+.page{max-width:1360px; margin:0 auto; padding:1.5rem 1.2rem 2.5rem; display:flex; flex-direction:column; gap:1rem}
+h1{font-family:var(--f-display); font-size:1.68rem; font-weight:700; margin:0; letter-spacing:-.015em}
+.sub{color:var(--muted); font-size:.82rem; max-width:82ch}
+.sub b{color:var(--ink-2); font-weight:600}
+.mono{font-family:var(--f-mono); font-variant-numeric:tabular-nums}
+.lbl{font-size:.65rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--muted)}
+
+.btn{font-family:var(--f-body); font-size:.78rem; color:var(--ink); background:var(--surface-2);
+  border:1px solid var(--line); border-radius:3px; padding:.3rem .62rem; cursor:pointer}
+.btn:hover:not(:disabled){background:var(--surface-3)}
+.btn:disabled{opacity:.42; cursor:default}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600}
+.btn.outline{background:transparent; border:1px solid var(--accent); color:var(--accent); font-weight:600; white-space:nowrap}
+.btn.outline:hover:not(:disabled){background:var(--accent-soft)}
+.resetbar{display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; background:var(--surface-2);
+  border:1px solid var(--line); border-radius:4px; padding:.5rem .6rem; margin-bottom:.65rem}
+.resetbar span{font-size:.71rem; color:var(--muted); line-height:1.45; flex:1; min-width:190px}
+.btn.primary:hover:not(:disabled){filter:brightness(1.08)}
+.btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+/* ---------- two panes ---------- */
+.panes{display:grid; grid-template-columns:1.15fr .85fr; gap:1rem; align-items:start}
+@media (max-width:960px){ .panes{grid-template-columns:1fr} }
+.pane{background:var(--surface); border:1px solid var(--line); border-radius:5px; display:flex; flex-direction:column;
+  min-height:400px; overflow:hidden}
+.pane > header{display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; padding:.6rem .75rem;
+  border-bottom:1px solid var(--line); background:var(--surface-2)}
+.pane > header .grow{flex:1}
+.pane .body{padding:.7rem; overflow-y:auto; max-height:640px; position:relative}
+.hint{font-size:.72rem; color:var(--muted)}
+
+/* ---------- explorer 1 tiles ---------- */
+#tiles{display:grid; grid-template-columns:repeat(auto-fill,minmax(196px,1fr)); gap:.6rem; align-content:start; min-height:320px}
+.emptyfolder{grid-column:1/-1; border:1px dashed var(--line); border-radius:5px; padding:2.2rem 1.4rem;
+  text-align:center; color:var(--muted); font-size:.82rem; line-height:1.6; align-self:start}
+.emptyfolder b{color:var(--ink); font-size:.95rem}
+.emptyfolder p{margin:.2rem 0}
+.emptyfolder em{color:var(--accent); font-style:normal; font-weight:600}
+.tile{border:1px solid var(--line); border-radius:4px; background:var(--surface); padding:.5rem .55rem .45rem;
+  display:flex; flex-direction:column; gap:.32rem; position:relative; user-select:none}
+.tile.sel{background:var(--accent-soft); border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset}
+.tile.lit{outline:2px dashed var(--amber); outline-offset:1px}
+.gtag.own{color:var(--muted); background:var(--surface-2)}
+.gtag.none{color:var(--amber); background:var(--amber-soft)}
+.tile .top{display:flex; align-items:flex-start; gap:.35rem; padding-right:16px}
+.tile .x{position:absolute; top:2px; right:3px; width:18px; height:18px; border:0; background:transparent;
+  color:var(--muted); font-size:.9rem; line-height:1; cursor:pointer; border-radius:3px; opacity:.55; padding:0}
+.tile:hover .x, .tile.sel .x{opacity:1}
+.tile .x:hover{background:var(--flag-soft); color:var(--flag)}
+.linky{background:none; border:0; padding:0; color:var(--accent); font:inherit; cursor:pointer; text-decoration:underline}
+.tile .chev{font-family:var(--f-mono); font-size:.72rem; color:var(--muted); cursor:pointer; padding:0 .18rem; border-radius:2px}
+.tile .chev:hover{background:var(--surface-2); color:var(--accent)}
+.tname{font-family:var(--f-mono); font-size:.75rem; color:var(--ink); flex:1; word-break:break-all; line-height:1.28;
+  border-radius:2px; padding:0 .16rem; cursor:text}
+.tname:hover{background:var(--surface-2)}
+.tname input{font:inherit; width:100%; background:var(--surface); color:var(--ink); border:1px solid var(--accent);
+  border-radius:2px; padding:0 .16rem}
+.tmeta{font-family:var(--f-mono); font-size:.62rem; color:var(--muted); line-height:1.3;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.badge{font-family:var(--f-mono); font-size:.58rem; letter-spacing:.04em; text-transform:uppercase;
+  padding:.04rem .3rem; border-radius:2px; border:1px solid var(--line); color:var(--muted)}
+.badge.dark{background:var(--surface-2)}
+.badge.low{background:var(--amber-soft); color:var(--amber); border-color:transparent}
+.badge.flagged{background:var(--flag-soft); color:var(--flag); border-color:transparent}
+.gtag{display:inline-flex; align-items:center; gap:.22rem; font-family:var(--f-mono); font-size:.6rem; color:var(--accent);
+  background:var(--accent-soft); border-radius:2px; padding:.05rem .3rem; max-width:100%; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap}
+.thumb{background:var(--surface-2); border-radius:3px; display:block; width:100%; height:auto}
+.thumb text.ax{font-family:var(--f-mono); font-size:7px; fill:var(--muted)}
+.pixels{border-top:1px solid var(--line-soft); margin-top:.15rem; padding-top:.3rem}
+.prow{display:grid; grid-template-columns:auto 1.1rem repeat(4,1fr); gap:.15rem .3rem; align-items:center;
+  font-family:var(--f-mono); font-size:.64rem; padding:.05rem 0}
+.prow.head{color:var(--muted); font-size:.56rem; letter-spacing:.06em; text-transform:uppercase}
+.prow input[type=checkbox]{width:12px; height:12px; margin:0; accent-color:var(--accent); cursor:pointer}
+.prow .v{text-align:right; color:var(--ink-2)}
+.prow.offp .v, .prow.offp .pl{opacity:.4; text-decoration:line-through}
+.prow.badpx .pl{color:var(--flag)}
+.band{position:absolute; border:1px solid var(--accent); background:color-mix(in srgb, var(--accent) 14%, transparent);
+  pointer-events:none; border-radius:2px; z-index:5}
+
+/* ---------- explorer 2 groups ---------- */
+#groups{display:flex; flex-direction:column; gap:.55rem; min-height:320px}
+.gcard{border:1px solid var(--line); border-radius:4px; background:var(--surface); padding:.55rem .6rem .5rem;
+  position:relative; display:flex; flex-direction:column; gap:.35rem}
+.gcard.lit{outline:2px dashed var(--amber); outline-offset:1px}
+.gcard.gsel{background:var(--accent-soft); border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset}
+.gcard.gpart{border-color:var(--accent); box-shadow:inset 4px 0 0 var(--accent)}
+.gcard.drop{border-color:var(--accent); background:var(--accent-soft)}
+.pane.armed{box-shadow:0 0 0 2px var(--accent) inset}
+.gcard.solo{flex-direction:row; align-items:baseline; gap:.5rem; flex-wrap:wrap}
+.gcard.solo .gmeta{margin-left:auto; padding-right:1.1rem}
+.gcard .x{position:absolute; top:3px; right:4px; width:19px; height:19px; border:0; background:transparent;
+  color:var(--muted); font-size:.95rem; line-height:1; cursor:pointer; border-radius:3px}
+.gcard .x:hover{background:var(--flag-soft); color:var(--flag)}
+.gnum{font-family:var(--f-mono); font-size:.68rem; font-weight:600; color:var(--surface); background:var(--accent);
+  border-radius:3px; padding:.05rem .32rem; margin-right:.4rem; flex:none}
+.gcard.solo .gnum{order:-1}
+.gname{font-family:var(--f-mono); font-size:.8rem; font-weight:600; color:var(--ink); padding:0 .18rem 0 0;
+  cursor:text; border-radius:2px; max-width:calc(100% - 26px)}
+.gname:hover{background:var(--surface-2)}
+.gname input{font:inherit; width:100%; background:var(--surface); color:var(--ink); border:1px solid var(--accent);
+  border-radius:2px; padding:0 .16rem}
+.gmeta{font-family:var(--f-mono); font-size:.63rem; color:var(--muted)}
+.members{display:flex; flex-wrap:wrap; gap:.25rem}
+.mem{display:inline-flex; align-items:center; gap:.28rem; font-family:var(--f-mono); font-size:.64rem;
+  background:var(--surface-2); border:1px solid var(--line-soft); border-radius:12px; padding:.08rem .18rem .08rem .45rem;
+  color:var(--ink-2); max-width:100%}
+.mem span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px}
+.mem button{border:0; background:transparent; color:var(--muted); cursor:pointer; font-size:.7rem; line-height:1;
+  padding:.06rem .18rem; border-radius:50%}
+.mem button:hover{background:var(--flag-soft); color:var(--flag)}
+#dropzone{border:1px dashed var(--line); border-radius:4px; padding:.6rem; text-align:center; font-size:.72rem;
+  color:var(--muted); background:var(--surface); position:sticky; bottom:-.7rem; margin-top:.55rem; z-index:3}
+#dropzone.drop{border-color:var(--accent); border-style:solid; background:var(--accent-soft); color:var(--accent)}
+
+/* ---------- results ---------- */
+#results .body{max-height:none}
+.fig{display:block; width:100%; height:auto; background:#fff; border:1px solid var(--line); border-radius:3px}
+#figParams{margin-bottom:.9rem}
+.resrow{display:grid; grid-template-columns:minmax(340px,1fr) minmax(320px,1fr); gap:1rem; align-items:start}
+@media (max-width:900px){ .resrow{grid-template-columns:1fr} }
+table.summary{width:100%; border-collapse:collapse; font-size:.8rem}
+table.summary th{background:var(--accent); color:#fff; font-family:var(--f-body); font-weight:600; font-size:.72rem;
+  padding:.5rem .6rem; text-align:right; white-space:nowrap}
+table.summary th:first-child{border-radius:3px 0 0 0}
+table.summary th:nth-child(2){text-align:left}
+table.summary th:last-child{border-radius:0 3px 0 0}
+table.summary td{font-family:var(--f-mono); font-variant-numeric:tabular-nums; text-align:right;
+  padding:.42rem .6rem; border-bottom:1px solid var(--line-soft); white-space:nowrap}
+table.summary td:nth-child(2){text-align:left; font-family:var(--f-body)}
+table.summary tbody tr:nth-child(even){background:var(--surface-2)}
+table.summary td i{width:9px; height:9px; border-radius:2px; display:inline-block; margin-right:.45rem}
+.tnote{font-size:.68rem; color:var(--muted); margin:.5rem 0 0; line-height:1.45}
+dialog.exp{min-width:min(420px,92vw)}
+dialog.exp h3{font-family:var(--f-display); font-size:1.05rem; margin:0 0 .6rem}
+dialog.exp label{display:flex; align-items:center; gap:.5rem; font-size:.85rem; padding:.22rem 0; cursor:pointer}
+dialog.exp input[type=checkbox], dialog.exp input[type=radio]{accent-color:var(--accent); width:14px; height:14px; margin:0}
+dialog.exp .fmt{display:flex; gap:1rem; align-items:center; margin:.6rem 0 .2rem;
+  border-top:1px solid var(--line-soft); padding-top:.6rem}
+dialog.exp .fmt label{padding:0}
+dialog.exp .note{font-size:.7rem; color:var(--muted); line-height:1.45; margin:.6rem 0 .2rem}
+dialog.exp .acts{display:flex; justify-content:flex-end; gap:.5rem; margin-top:.8rem}
+
+footer{border-top:1px solid var(--line); padding-top:.8rem; display:flex; flex-wrap:wrap; gap:.3rem 1rem;
+  font-size:.72rem; color:var(--muted)}
+kbd{font-family:var(--f-mono); font-size:.72em; background:var(--surface-2); border:1px solid var(--line);
+  border-bottom-width:2px; border-radius:3px; padding:.05em .34em; color:var(--ink-2)}
+.status{background:var(--surface); border:1px solid var(--line); border-radius:4px; padding:.55rem .8rem;
+  font-family:var(--f-mono); font-size:.76rem; color:var(--ink-2); display:flex; flex-wrap:wrap; gap:.4rem 1.4rem}
+.status b{color:var(--accent); font-weight:600}
+.toast{position:fixed; left:50%; transform:translateX(-50%); bottom:1.3rem; background:var(--ink); color:var(--ground);
+  font-family:var(--f-mono); font-size:.76rem; padding:.45rem .85rem; border-radius:4px; opacity:0; pointer-events:none;
+  transition:opacity .18s; z-index:40}
+.toast.show{opacity:1}
+#ghost{position:fixed; display:none; z-index:60; pointer-events:none; background:var(--accent); color:#fff;
+  font-family:var(--f-mono); font-size:.72rem; padding:.3rem .6rem; border-radius:3px;
+  box-shadow:0 4px 14px rgba(0,0,0,.28)}
+body.dragging{cursor:grabbing}
+body.dragging *{cursor:grabbing!important}
+.tile{cursor:pointer}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="page">
+  <div>
+    <h1>JV Group Builder</h1>
+    <p class="sub">Step one, before any analysis. Left is the measurement folder; right is what you have grouped.
+      <b>Drag a box over tiles to select, drag the selection across to make a group, click a name to rename it.</b>
+      Every file starts as its own group, and selection is shared — pick a file and its group lights up,
+      pick a group and you have its files.</p>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="panes">
+
+    <section class="pane" id="pane1">
+      <header>
+        <span class="lbl">Explorer 1 · folder</span>
+        <button class="btn" data-act="import">Import files…</button>
+        <span class="hint mono" id="selInfo"></span>
+        <span class="hint mono" id="rmInfo"></span>
+        <span class="grow"></span>
+        <button class="btn" data-act="expandAll">Expand all</button>
+        <button class="btn" data-act="selAll">Select all</button>
+        <button class="btn" data-act="clearSel">Clear</button>
+        <button class="btn primary" data-act="group" id="btnGroup" disabled>Group selected →</button>
+      </header>
+      <div class="body"><div id="tiles"></div><div class="band" id="band" hidden></div></div>
+    </section>
+
+    <section class="pane" id="pane2">
+      <header>
+        <span class="lbl">Explorer 2 · groups</span>
+        <span class="hint mono" id="grpInfo"></span>
+        <span class="grow"></span>
+        <button class="btn" data-act="mergeSel" id="btnMerge" disabled>Merge</button>
+        <button class="btn" data-act="delSel" id="btnDelG" disabled>Remove</button>
+      </header>
+      <div class="body">
+        <div class="resetbar">
+          <button class="btn outline" data-act="reset">Reset to one group per file</button>
+          <span>Puts every file back into a group of its own — so all of them get plotted and averaged
+                individually, one number per file. This is the state the page starts in.</span>
+        </div>
+        <div id="groups"></div>
+        <div id="dropzone">drop anywhere here for a new group · drop on a card to add to it</div>
+      </div>
+    </section>
+
+  </div>
+
+  <section class="pane" id="results">
+    <header>
+      <span class="lbl">Results · groups</span>
+      <span class="hint mono" id="resInfo"></span>
+      <span class="grow"></span>
+      <button class="btn" data-act="clearGroups">Clear all groups</button>
+      <button class="btn primary" data-act="exportOpen" id="btnExport" disabled>Export…</button>
+    </header>
+    <div class="body">
+      <div id="figParams"></div>
+      <p class="tnote" id="figNote" style="margin:.35rem 0 .9rem"></p>
+      <div class="resrow"><div id="figJV"></div><div id="tblWrap"></div></div>
+    </div>
+  </section>
+
+  <footer>
+    <span><kbd>Drag</kbd> on empty space — rubber-band select</span>
+    <span><kbd>Ctrl</kbd>/<kbd>Shift</kbd>+click — add or extend</span>
+    <span>click a selected item again — unselect</span>
+    <span>× on a tile removes the file · drop .dat files on the left pane to import</span>
+    <span><kbd>Ctrl</kbd>+<kbd>A</kbd> all</span><span><kbd>Esc</kbd> clear</span>
+    <span><kbd>F2</kbd> rename</span><span><kbd>Enter</kbd> group selected</span>
+    <span>click a group — its files are selected too</span>
+    <span>drag a group card onto another to merge</span>
+  </footer>
+</div>
+
+<input type="file" id="fileIn" accept=".dat,.txt" multiple hidden>
+<dialog id="expDlg" class="exp">
+  <h3>Export to disk</h3>
+  <label><input type="checkbox" id="exP" checked> Parameter plots — J<sub>SC</sub>, V<sub>OC</sub>, FF, PCE</label>
+  <label><input type="checkbox" id="exJ" checked> J(V) curves</label>
+  <label><input type="checkbox" id="exT" checked> Summary table (CSV — carries SD, min and max)</label>
+  <div class="fmt"><span class="lbl">Plot format</span>
+    <label><input type="radio" name="fmt" value="png" checked> PNG (3×)</label>
+    <label><input type="radio" name="fmt" value="svg"> SVG (vector)</label>
+  </div>
+  <p class="note">Figures export on a white ground with the light palette, whatever theme you are viewing in.
+     Your browser will ask you to confirm each file.</p>
+  <div class="acts">
+    <button class="btn" onclick="document.getElementById('expDlg').close()">Cancel</button>
+    <button class="btn primary" id="btnDoExport">Save</button>
+  </div>
+</dialog>
+<div class="toast" id="toast"></div>
+<div id="ghost"></div>
+
+<script>
+const DATA = /*__DATA__*/;
+const PX = DATA.pixels;
+const K = (f,p)=>f+'|'+p;
+let SCANS = DATA.scans.slice();        // master list: built-in + imported
+let byFile = {}, FILES = [];
+function reindex(){
+  SCANS.sort((a,b)=>a.mtime-b.mtime);
+  byFile = Object.fromEntries(SCANS.map(s=>[s.file,s]));
+  FILES  = SCANS.map(s=>s.file).filter(f=>!S.removed[f]);
+  S.groups.forEach(g=> g.files = g.files.filter(f=>byFile[f] && !S.removed[f]));
+  S.groups = S.groups.filter(g=>g.files.length);
+  [...sel].forEach(f=>{ if(!FILES.includes(f)) sel.delete(f); });
+}
+
+let S, sel=new Set(), lastClicked=null, lastG=null;
+// selection lives on files; a group's state is derived from it, so the two panes can never disagree
+function gState(g){ const n=g.files.filter(f=>sel.has(f)).length;
+  return n===0 ? 'none' : (n===g.files.length ? 'full' : 'part'); }
+const touchedGroups = () => S.groups.filter(g=>g.files.some(f=>sel.has(f)));
+
+function defaults(){
+  return {
+    names:{}, gnames:{}, pixOff:{}, expanded:{}, removed:{},
+    groups: SCANS.map((s,i)=>({id:'g'+i, files:[s.file]})),
+    seq: SCANS.length
+  };
+}
+function load(){
+  let st=null; try{ const r=localStorage.getItem('jvexp.v1'); if(r) st=JSON.parse(r); }catch(e){}
+  S = (st && st.groups) ? st : defaults();
+  S.removed = S.removed || {};
+}
+function save(){ try{ localStorage.setItem('jvexp.v1', JSON.stringify(S)); }catch(e){} }
+
+const fname = f => S.names[f] || byFile[f].name;
+const gname = g => S.gnames[g.id] || (g.files.length===1 ? fname(g.files[0]) : 'Group '+(S.groups.indexOf(g)+1));
+const groupOfFile = f => S.groups.find(g=>g.files.includes(f)) || null;
+const pixOn = (f,p) => !S.pixOff[K(f,p)];
+const livePixels = f => PX.filter(p=>byFile[f].channels[p] && pixOn(f,p));
+
+function fileClass(f){
+  const s=byFile[f], modes=PX.map(p=>s.channels[p]&&s.channels[p].mode).filter(Boolean);
+  if(modes.includes('light')) return 'light';
+  if(modes.includes('lowlight')) return 'lowlight';
+  return 'dark';
+}
+
+/* ---------------- explorer 1 ---------------- */
+function nfmt(v){
+  const a=Math.abs(v);
+  if(a>=1000) return (v/1000).toFixed(a>=10000?0:1)+'k';
+  if(a>=100) return v.toFixed(0);
+  if(a>=10) return v.toFixed(0);
+  if(a>=1) return v.toFixed(1);
+  if(a>0) return v.toPrecision(1);
+  return '0';
+}
+function thumb(f){
+  const s=byFile[f];
+  const W=200, H=92, mL=26, mR=5, mT=13, mB=13;        // margins leave room for axis numbers
+  const iw=W-mL-mR, ih=H-mT-mB;
+  const curves=PX.map(p=>s.channels[p]).filter(Boolean);
+  if(!curves.length) return `<div class="thumb" style="height:${H}px"></div>`;
+  const lit=curves.filter(c=>c.mode==='light');
+  const use=lit.length?lit:curves;
+
+  let jref=0, amax=0;
+  use.forEach(c=>{ if(c.jsc!=null && c.jsc<jref) jref=c.jsc;
+                   c.curve.forEach(v=>{ if(Math.abs(v)>amax) amax=Math.abs(v); }); });
+  let lo,hi;
+  if(jref < -0.5){ lo=jref*1.40; hi=-jref*0.90; }        // photocurrent: frame on J_SC, curve leaves the frame beyond
+  else { lo=-amax*0.30; hi=amax*0.85; }                  // dark / diagnostic: frame the forward rise
+  if(!(hi-lo>1e-9)){ lo=-1; hi=1; }
+
+  const v0=s.vmin, v1=s.vmax;
+  const X=i=>mL+(i/(s.npts-1))*iw;
+  const XV=v=>mL+((v-v0)/(v1-v0))*iw;
+  const Y=j=>mT+(hi-j)/(hi-lo)*ih;
+  const cid='clip'+Math.abs(hashCode(f));
+  const paths=use.map(c=>{
+    let d='';
+    for(let i=0;i<s.npts;i+=1){ const y=Y(c.curve[i]); d+=(d?'L':'M')+X(i).toFixed(1)+','+(y<-60?-60:y>H+60?H+60:y).toFixed(1); }
+    return `<path d="${d}" fill="none" stroke="var(--accent)" stroke-width="1.2" opacity=".8"/>`;
+  }).join('');
+  const zeroY=Y(0), zeroX=XV(0);
+  return `<svg class="thumb" viewBox="0 0 ${W} ${H}" role="img"
+    aria-label="J(V) from ${v0} to ${v1} volt, current ${nfmt(lo)} to ${nfmt(hi)} milliamp per square centimetre">
+    <defs><clipPath id="${cid}"><rect x="${mL}" y="${mT}" width="${iw}" height="${ih}"/></clipPath></defs>
+    <rect x="${mL}" y="${mT}" width="${iw}" height="${ih}" fill="none" stroke="var(--line)"/>
+    ${zeroY>mT&&zeroY<mT+ih?`<line x1="${mL}" y1="${zeroY.toFixed(1)}" x2="${mL+iw}" y2="${zeroY.toFixed(1)}" stroke="var(--line)" stroke-dasharray="2 2"/>`:''}
+    ${zeroX>mL&&zeroX<mL+iw?`<line x1="${zeroX.toFixed(1)}" y1="${mT}" x2="${zeroX.toFixed(1)}" y2="${mT+ih}" stroke="var(--line)" stroke-dasharray="2 2"/>`:''}
+    <g clip-path="url(#${cid})">${paths}</g>
+    <text class="ax" x="${mL-3}" y="${mT+4}" text-anchor="end">${nfmt(hi)}</text>
+    <text class="ax" x="${mL-3}" y="${mT+ih}" text-anchor="end">${nfmt(lo)}</text>
+    <text class="ax" x="${mL-3}" y="${zeroY.toFixed(1)+3}" text-anchor="end" opacity="${zeroY>mT+9&&zeroY<mT+ih-9?1:0}">0</text>
+    <text class="ax" x="${mL}" y="${H-3}" text-anchor="start">${v0}</text>
+    <text class="ax" x="${mL+iw}" y="${H-3}" text-anchor="end">${v1}</text>
+    <text class="ax" x="${mL+iw/2}" y="${H-3}" text-anchor="middle" opacity=".7">V</text>
+    <text class="ax" x="2" y="8" text-anchor="start" opacity=".7">mA/cm²</text>
+  </svg>`;
+}
+function hashCode(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))|0; } return h; }
+
+function pixelTable(f){
+  const s=byFile[f];
+  let h='<div class="pixels"><div class="prow head"><span>px</span><span></span><span class="v">PCE</span><span class="v">V<sub>OC</sub></span><span class="v">J<sub>SC</sub></span><span class="v">FF</span></div>';
+  PX.forEach(p=>{
+    const c=s.channels[p]; if(!c) return;
+    const on=pixOn(f,p);
+    const vals = c.mode==='light'
+      ? [c.pce?.toFixed(2)??'—', c.voc?.toFixed(3)??'—', c.jsc?.toFixed(1)??'—', c.ff?.toFixed(1)??'—']
+      : [c.mode==='dark'?'dark':'low', (c.INT<0.01?c.INT.toExponential(0):c.INT.toFixed(2)), '—','—'];
+    h+=`<div class="prow ${on?'':'offp'} ${c.qc?'badpx':''}">
+      <span class="pl">${p}${c.qc?' ⚑':''}</span>
+      <input type="checkbox" ${on?'checked':''} data-px="${K(f,p)}" title="include pixel ${p}">
+      ${vals.map(v=>`<span class="v">${v}</span>`).join('')}</div>`;
+  });
+  return h+'</div>';
+}
+
+function renderTiles(){
+  const el=document.getElementById('tiles');
+  if(!FILES.length){
+    el.innerHTML = `<div class="emptyfolder">
+      <p><b>No measurement files yet.</b></p>
+      <p>Press <em>Import files…</em> above, or drag <code>.dat</code> files straight onto this pane.
+         They are parsed here in your browser — nothing is uploaded anywhere.</p></div>`;
+    document.getElementById('selInfo').textContent='';
+    document.getElementById('rmInfo').innerHTML = Object.keys(S.removed).length
+      ? `${Object.keys(S.removed).length} removed · <button class="linky" data-act="restore">put back</button>` : '';
+    document.getElementById('btnGroup').disabled = true;
+    return;
+  }
+  el.innerHTML = FILES.map(f=>{
+    const s=byFile[f], g=groupOfFile(f), cls=fileClass(f);
+    const n=PX.filter(p=>s.channels[p]).length, live=livePixels(f).length;
+    const flagged=PX.some(p=>s.channels[p]&&s.channels[p].qc);
+    const badge = cls==='light' ? '' : `<span class="badge ${cls==='dark'?'dark':'low'}">${cls==='dark'?'dark scan':'low light'}</span>`;
+    return `<div class="tile ${sel.has(f)?'sel':''} ${g?'grouped':''}" data-f="${f}">
+      <button class="x" data-rmf="${f}" title="remove this file from the workspace">×</button>
+      <div class="top"><span class="chev" data-exp="${f}">${S.expanded[f]?'▾':'▸'}</span>
+        <span class="tname" data-name="${f}">${fname(f)}</span></div>
+      <div class="tmeta">${new Date(s.mtime).toISOString().slice(5,16).replace('T',' ')} · ${live}/${n} pixels</div>
+      <div>${badge}${flagged?'<span class="badge flagged">⚑ shunt</span>':''}</div>
+      ${thumb(f)}
+      ${g ? (g.files.length>1||S.gnames[g.id]
+            ? `<span class="gtag" title="in group ${gname(g)}">▪ ${gname(g)}</span>`
+            : `<span class="gtag own">▪ own group</span>`)
+          : `<span class="gtag none">◦ ungrouped</span>`}
+      ${S.expanded[f]?pixelTable(f):''}
+    </div>`;
+  }).join('');
+  const nsel=sel.size;
+  document.getElementById('selInfo').textContent = nsel? `${nsel} selected` : '';
+  const nrm=Object.keys(S.removed).length;
+  document.getElementById('rmInfo').innerHTML = nrm
+    ? `${nrm} removed · <button class="linky" data-act="restore">put back</button>` : '';
+  document.getElementById('btnGroup').disabled = nsel===0;
+}
+
+/* ---------------- explorer 2 ---------------- */
+function renderGroups(){
+  const el=document.getElementById('groups');
+  const NUMS={}; plotGroups().forEach(g=>NUMS[g.id]=g.num);
+  el.innerHTML = S.groups.map(g=>{
+    const files=g.files.filter(f=>byFile[f]);
+    const px=files.reduce((n,f)=>n+livePixels(f).length,0);
+    const tot=files.reduce((n,f)=>n+PX.filter(p=>byFile[f].channels[p]).length,0);
+    const solo=files.length===1;
+    const st=gState(g), num=NUMS[g.id];
+    return `<div class="gcard ${solo?'solo':''} ${st==='full'?'gsel':st==='part'?'gpart':''}" data-g="${g.id}">
+      <button class="x" data-del="${g.id}" title="remove this group">×</button>
+      ${num?`<span class="gnum">${num}</span>`:''}<span class="gname" data-gname="${g.id}">${gname(g)}</span>
+      <span class="gmeta">${solo?'':files.length+' files · '}${px} of ${tot} px</span>
+      ${solo?'':`<div class="members">${files.map(f=>`<span class="mem"><span>${fname(f)}</span><button data-pull="${g.id}::${f}" title="take out of group">×</button></span>`).join('')}</div>`}
+    </div>`;
+  }).join('');
+  const ungrouped=FILES.filter(f=>!groupOfFile(f)).length;
+  document.getElementById('grpInfo').textContent =
+    `${S.groups.length} group${S.groups.length===1?'':'s'}${ungrouped?` · ${ungrouped} file${ungrouped===1?'':'s'} ungrouped`:''}` +
+    (touchedGroups().length?` · ${touchedGroups().length} selected`:'');
+  document.getElementById('btnMerge').disabled = touchedGroups().length<2;
+  document.getElementById('btnDelG').disabled = touchedGroups().length===0;
+}
+
+function renderStatus(){
+  const grouped=FILES.filter(f=>groupOfFile(f));
+  const px=grouped.reduce((n,f)=>n+livePixels(f).length,0);
+  const lightPx=grouped.reduce((n,f)=>n+livePixels(f).filter(p=>byFile[f].channels[p].mode==='light').length,0);
+  document.getElementById('status').innerHTML =
+    `<span><b>${S.groups.length}</b> groups</span>
+     <span><b>${grouped.length}</b> of ${FILES.length} files grouped</span>
+     <span><b>${px}</b> pixels included · ${lightPx} illuminated</span>
+     <span style="color:var(--muted)">grouping is step one — analysis reads exactly this</span>`;
+}
+function render(){ renderTiles(); renderGroups(); renderStatus(); renderResults(); save(); }
+
+/* ---------------- selection ---------------- */
+function selectOnly(f){ sel.clear(); sel.add(f); lastClicked=f; }
+function toggle(f){ sel.has(f)?sel.delete(f):sel.add(f); lastClicked=f; }
+function range(a,b){ const i=FILES.indexOf(a), j=FILES.indexOf(b); if(i<0||j<0) return;
+  FILES.slice(Math.min(i,j),Math.max(i,j)+1).forEach(f=>sel.add(f)); }
+
+const tiles=document.getElementById('tiles');
+
+tiles.addEventListener('click',e=>{
+  const rm=e.target.closest('[data-rmf]');
+  if(rm){ removeFile(rm.dataset.rmf); return; }
+  const chev=e.target.closest('[data-exp]');
+  if(chev){ const f=chev.dataset.exp; S.expanded[f]=!S.expanded[f]; render(); }
+});
+function removeFile(f){
+  S.removed[f]=1; sel.delete(f); delete S.expanded[f];
+  reindex(); render();
+  toast(`“${fname(f)}” removed — “put back” restores it`);
+}
+function restoreAll(){ S.removed={}; reindex();
+  FILES.forEach(f=>{ if(!groupOfFile(f)) S.groups.push({id:'g'+(S.seq++), files:[f]}); });
+  render(); toast('Removed files are back, each in its own group'); }
+tiles.addEventListener('change',e=>{
+  const cb=e.target.closest('input[data-px]'); if(!cb) return;
+  const k=cb.dataset.px;
+  if(cb.checked) delete S.pixOff[k]; else S.pixOff[k]=1;
+  render();
+});
+
+function editName(span,f){
+  const cur=fname(f);
+  span.innerHTML=`<input value="${cur.replace(/"/g,'&quot;')}">`;
+  const inp=span.querySelector('input'); inp.focus(); inp.select();
+  const done=ok=>{ if(ok){ const v=inp.value.trim(); if(v && v!==byFile[f].name) S.names[f]=v; else delete S.names[f]; } render(); };
+  inp.addEventListener('blur',()=>done(true));
+  inp.addEventListener('keydown',ev=>{ if(ev.key==='Enter'){ev.preventDefault();done(true);} if(ev.key==='Escape'){ev.preventDefault();done(false);} ev.stopPropagation(); });
+}
+function editGroupName(span,id){
+  const g=S.groups.find(x=>x.id===id); if(!g) return;
+  span.innerHTML=`<input value="${gname(g).replace(/"/g,'&quot;')}">`;
+  const inp=span.querySelector('input'); inp.focus(); inp.select();
+  const done=ok=>{ if(ok){ const v=inp.value.trim(); if(v) S.gnames[id]=v; else delete S.gnames[id]; } render(); };
+  inp.addEventListener('blur',()=>done(true));
+  inp.addEventListener('keydown',ev=>{ if(ev.key==='Enter'){ev.preventDefault();done(true);} if(ev.key==='Escape'){ev.preventDefault();done(false);} ev.stopPropagation(); });
+}
+
+/* rubber band on empty space */
+let band=null;
+const bandEl=document.getElementById('band');
+const bodyEl=tiles.parentElement;
+bodyEl.addEventListener('mousedown',e=>{
+  if(e.target.closest('.tile')||e.button!==0) return;
+  const r=bodyEl.getBoundingClientRect();
+  band={x0:e.clientX-r.left+bodyEl.scrollLeft, y0:e.clientY-r.top+bodyEl.scrollTop, add:e.ctrlKey||e.metaKey||e.shiftKey,
+        base:new Set(sel)};
+  bandEl.hidden=false; e.preventDefault();
+});
+window.addEventListener('mousemove',e=>{
+  if(!band) return;
+  const r=bodyEl.getBoundingClientRect();
+  const x=e.clientX-r.left+bodyEl.scrollLeft, y=e.clientY-r.top+bodyEl.scrollTop;
+  const L=Math.min(band.x0,x), T=Math.min(band.y0,y), Wd=Math.abs(x-band.x0), Hd=Math.abs(y-band.y0);
+  Object.assign(bandEl.style,{left:L+'px',top:T+'px',width:Wd+'px',height:Hd+'px'});
+  const br={left:L,top:T,right:L+Wd,bottom:T+Hd};
+  sel = band.add ? new Set(band.base) : new Set();
+  tiles.querySelectorAll('.tile').forEach(t=>{
+    const tr=t.getBoundingClientRect();
+    const box={left:tr.left-r.left+bodyEl.scrollLeft, top:tr.top-r.top+bodyEl.scrollTop,
+               right:tr.right-r.left+bodyEl.scrollLeft, bottom:tr.bottom-r.top+bodyEl.scrollTop};
+    if(box.left<br.right&&box.right>br.left&&box.top<br.bottom&&box.bottom>br.top) sel.add(t.dataset.f);
+  });
+  tiles.querySelectorAll('.tile').forEach(t=>t.classList.toggle('sel',sel.has(t.dataset.f)));
+  document.getElementById('selInfo').textContent = sel.size?`${sel.size} selected`:'';
+  document.getElementById('btnGroup').disabled = sel.size===0;
+});
+window.addEventListener('mouseup',()=>{ if(band){ band=null; bandEl.hidden=true; render(); } });
+
+/* ---------------- pointer drag ---------------- */
+const ghost=document.getElementById('ghost');
+const gwrap=document.getElementById('groups');
+const pane2=document.getElementById('pane2'), dz=document.getElementById('dropzone');
+let drag=null, pending=null, renameCand=null;
+function clearDrop(){ gwrap.querySelectorAll('.gcard').forEach(c=>c.classList.remove('drop')); dz.classList.remove('drop'); pane2.classList.remove('armed'); }
+
+tiles.addEventListener('mousedown',e=>{
+  if(e.button!==0) return;
+  if(e.target.closest('input') || e.target.closest('[data-exp]') || e.target.closest('[data-rmf]')) return;
+  const tl=e.target.closest('.tile'); if(!tl) return;
+  const f=tl.dataset.f, onName=!!e.target.closest('[data-name]');
+  renameCand=null;
+  if(e.ctrlKey||e.metaKey){ toggle(f); render(); }
+  else if(e.shiftKey && lastClicked){ range(lastClicked,f); lastClicked=f; render(); }
+  else if(!sel.has(f)){ selectOnly(f); render(); }
+  else if(onName && sel.size===1){ renameCand={kind:'file', id:f}; }
+  else { sel.delete(f); lastClicked=f; render(); }          // click again on a selected tile → unselect
+  pending = sel.size ? {x:e.clientX,y:e.clientY,type:'files',payload:[...sel]} : null;
+  e.preventDefault();
+});
+
+gwrap.addEventListener('mousedown',e=>{
+  if(e.button!==0) return;
+  if(e.target.closest('button')) return;
+  const onGName=!!e.target.closest('[data-gname]');
+  const c=e.target.closest('.gcard');
+  if(!c){ if(sel.size){ sel.clear(); render(); } return; }
+  const id=c.dataset.g, ids=S.groups.map(g=>g.id);
+  const g=S.groups.find(x=>x.id===id); if(!g) return;
+  const soleFull = gState(g)==='full' && sel.size===g.files.length;
+  if(e.ctrlKey||e.metaKey){
+    const all=g.files.every(f=>sel.has(f));
+    g.files.forEach(f=> all ? sel.delete(f) : sel.add(f));
+    lastG=id; lastClicked=g.files[g.files.length-1]; render();
+  } else if(e.shiftKey && lastG){
+    const i=ids.indexOf(lastG), j=ids.indexOf(id);
+    if(i>=0&&j>=0) ids.slice(Math.min(i,j),Math.max(i,j)+1)
+      .forEach(x=>{ const gg=S.groups.find(y=>y.id===x); if(gg) gg.files.forEach(f=>sel.add(f)); });
+    lastG=id; render();
+  } else if(!soleFull){
+    sel=new Set(g.files); lastG=id; lastClicked=g.files[0]; render();
+  } else if(onGName){ renameCand={kind:'group', id}; }
+  else { g.files.forEach(f=>sel.delete(f)); lastG=id; render(); }   // click again on a selected card → unselect
+  const touched=touchedGroups().map(x=>x.id);
+  const payload = touched.includes(id) ? touched : (gState(g)==='none' ? [] : [id]);
+  pending = payload.length ? {x:e.clientX,y:e.clientY,type:'group',payload} : null;
+  e.preventDefault();
+});
+
+window.addEventListener('mousemove',e=>{
+  if(pending && !drag && Math.hypot(e.clientX-pending.x, e.clientY-pending.y) > 5){
+    drag={type:pending.type, payload:pending.payload};
+    renameCand=null;
+    ghost.textContent = drag.type==='group'
+      ? (drag.payload.length===1 ? 'merge into…' : `merge ${drag.payload.length} groups into…`)
+      : (drag.payload.length===1 ? fname(drag.payload[0]) : drag.payload.length+' files');
+    ghost.style.display='block'; document.body.classList.add('dragging');
+  }
+  if(!drag) return;
+  ghost.style.left=(e.clientX+14)+'px'; ghost.style.top=(e.clientY+12)+'px';
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  const card=el&&el.closest?el.closest('.gcard'):null;
+  const inPane=el&&el.closest?!!el.closest('#pane2'):false;
+  const selfDrag = card && drag.type==='group' && drag.payload.includes(card.dataset.g);
+  gwrap.querySelectorAll('.gcard').forEach(c=>c.classList.toggle('drop', c===card && !selfDrag));
+  dz.classList.toggle('drop', inPane && !card && drag.type==='files');
+  pane2.classList.toggle('armed', drag.type==='files' && inPane);
+});
+
+window.addEventListener('mouseup',e=>{
+  if(drag){
+    const el=document.elementFromPoint(e.clientX,e.clientY);
+    const card=el&&el.closest?el.closest('.gcard'):null;
+    const inPane=el&&el.closest?!!el.closest('#pane2'):false;
+    clearDrop(); ghost.style.display='none'; document.body.classList.remove('dragging');
+    if(drag.type==='files'){ if(card) addToGroup(card.dataset.g, drag.payload); else if(inPane) newGroup(drag.payload); }
+    else if(card && !drag.payload.includes(card.dataset.g)){ mergeGroups(drag.payload, card.dataset.g); }
+    drag=null; pending=null; return;
+  }
+  if(pending && renameCand){
+    const rc=renameCand; renameCand=null; pending=null;
+    if(rc.kind==='file'){
+      const span=tiles.querySelector('[data-name="'+CSS.escape(rc.id)+'"]'); if(span) editName(span,rc.id);
+    } else {
+      const span=gwrap.querySelector('[data-gname="'+CSS.escape(rc.id)+'"]'); if(span) editGroupName(span,rc.id);
+    }
+    return;
+  }
+  pending=null;
+});
+
+function detach(files){
+  files.forEach(f=>{ const g=groupOfFile(f); if(g) g.files=g.files.filter(x=>x!==f); });
+  S.groups=S.groups.filter(g=>g.files.length);
+}
+function newGroup(files){
+  if(!files || !files.length) return;
+  detach(files);
+  const id='g'+(S.seq++);
+  S.groups.push({id, files:[...files]});
+  if(files.length>1) S.gnames[id]='Group '+S.groups.length;
+  sel.clear(); render(); toast('New group · '+files.length+' file'+(files.length===1?'':'s'));
+}
+function addToGroup(id, files){
+  if(!files || !files.length) return;
+  const target=S.groups.find(x=>x.id===id); if(!target) return;
+  const keep=target.files.slice(), idx=S.groups.indexOf(target);
+  detach(files);
+  let gg=S.groups.find(x=>x.id===id);
+  if(!gg){ gg={id, files:keep.filter(f=>!files.includes(f))}; S.groups.splice(Math.min(idx,S.groups.length),0,gg); }
+  files.forEach(f=>{ if(!gg.files.includes(f)) gg.files.push(f); });
+  sel.clear(); render(); toast('Added to \u201c'+gname(gg)+'\u201d');
+}
+function mergeGroups(fromIds,toId){
+  const ids=Array.isArray(fromIds)?fromIds:[fromIds];
+  const b=S.groups.find(g=>g.id===toId); if(!b) return;
+  ids.forEach(id=>{ const a=S.groups.find(g=>g.id===id); if(!a||a===b) return;
+    a.files.forEach(f=>{ if(!b.files.includes(f)) b.files.push(f); }); });
+  S.groups=S.groups.filter(g=>g===b||!ids.includes(g.id));
+  render(); toast('Merged into \u201c'+gname(b)+'\u201d');
+}
+
+/* group card actions */
+gwrap.addEventListener('click',e=>{
+  const del=e.target.closest('[data-del]');
+  if(del){ S.groups=S.groups.filter(g=>g.id!==del.dataset.del); render(); return; }
+  const pull=e.target.closest('[data-pull]');
+  if(pull){ const [id,f]=pull.dataset.pull.split('::');
+    const g=S.groups.find(x=>x.id===id); if(g){ g.files=g.files.filter(x=>x!==f); S.groups=S.groups.filter(x=>x.files.length); }
+    render(); return; }
+
+});
+/* hover linkage both ways */
+gwrap.addEventListener('mouseover',e=>{
+  const c=e.target.closest('.gcard'); if(!c) return;
+  const g=S.groups.find(x=>x.id===c.dataset.g); if(!g) return;
+  tiles.querySelectorAll('.tile').forEach(t=>t.classList.toggle('lit', g.files.includes(t.dataset.f)));
+});
+gwrap.addEventListener('mouseleave',()=>tiles.querySelectorAll('.tile').forEach(t=>t.classList.remove('lit')));
+tiles.addEventListener('mouseover',e=>{
+  const t=e.target.closest('.tile'); if(!t) return;
+  const g=groupOfFile(t.dataset.f);
+  gwrap.querySelectorAll('.gcard').forEach(c=>c.classList.toggle('lit', !!g && c.dataset.g===g.id));
+});
+tiles.addEventListener('mouseleave',()=>gwrap.querySelectorAll('.gcard').forEach(c=>c.classList.remove('lit')));
+
+
+/* ---------------- .dat parser (same anchor-token rules as the Python one) ---------------- */
+const QC = {voc:[0.5,1.3], jsc:[1.0,40.0], ff:[0.20,0.90], pce:[0.5,25.0]};
+
+function lsqSlope(xs,ys){                       // fit y = a·x + b, return a
+  const n=xs.length; if(n<4) return null;
+  let sx=0,sy=0,sxx=0,sxy=0;
+  for(let i=0;i<n;i++){ sx+=xs[i]; sy+=ys[i]; sxx+=xs[i]*xs[i]; sxy+=xs[i]*ys[i]; }
+  const d=n*sxx-sx*sx; if(Math.abs(d)<1e-12) return null;
+  return (n*sxy-sx*sy)/d;
+}
+function slopeWindow(V,Jc,v0,half){             // dV/dJ around v0 → Ω·cm²
+  const xs=[],ys=[];
+  for(let i=0;i<V.length;i++) if(V[i]>=v0-half && V[i]<=v0+half){ xs.push(Jc[i]); ys.push(V[i]); }
+  const a=lsqSlope(xs,ys); return a==null?null:a*1000;
+}
+function refineMPP(V,Jc){
+  let k=0,best=-Infinity;
+  for(let i=0;i<V.length;i++){ const p=-V[i]*Jc[i]; if(p>best){best=p;k=i;} }
+  if(k<=0||k>=V.length-1) return [V[k],best];
+  const x0=V[k-1],x1=V[k],x2=V[k+1];
+  const y0=-x0*Jc[k-1], y1=-x1*Jc[k], y2=-x2*Jc[k+1];
+  const d1=(y1-y0)/(x1-x0), d2=(y2-y1)/(x2-x1);
+  const a=(d2-d1)/(x2-x0);
+  if(!isFinite(a)||a===0) return [V[k],best];
+  const bq=d1-a*(x0+x1), cq=y0-a*x0*x0-bq*x0;
+  const vm=-bq/(2*a);
+  if(!(vm>=x0&&vm<=x2)) return [V[k],best];
+  return [vm, a*vm*vm+bq*vm+cq];
+}
+const sg = (v,n)=> (v==null||!isFinite(v)) ? null : Number(v.toPrecision(n||5));
+function classify(I){ return I>=10 ? 'light' : (I>=1e-3 ? 'lowlight' : 'dark'); }
+function materialOf(stem){
+  const m=/^sample\d+_([A-Za-z0-9]+)/.exec(stem); if(!m) return null;
+  const mm=/^(PTQ10)(.+)$/.exec(m[1]);
+  return mm ? mm[1]+':'+mm[2] : m[1];
+}
+
+function parseDat(fileName, text, mtime){
+  const rows = text.replace(/\r\n/g,'\n').split('\n').map(l=>l.split('\t'));
+  let ip=-1, iv=-1;
+  for(let i=0;i<rows.length;i++){
+    if(ip<0 && rows[i][0]==='Pixel') ip=i;
+    if(iv<0 && rows[i][0]==='Voltage') iv=i;
+  }
+  if(ip<0||iv<0||iv<=ip) throw new Error('no Pixel / Voltage anchor — not a LabVIEW JV file');
+  const names = rows[ip].slice(1).filter(x=>x!=='' && x!=null);
+  const n = names.length;
+  if(!n) throw new Error('no channels in the Pixel row');
+  const idx = {}; names.forEach((nm,i)=>idx[nm]=i);
+
+  const sum={};
+  for(let i=ip+1;i<iv;i++){
+    const r=rows[i]; if(!r[0]) continue;
+    sum[r[0].split('[')[0].trim()] = r.slice(1,1+n).map(Number);
+  }
+  const meta={};
+  for(let i=0;i<ip;i++){
+    const s=(rows[i][0]||'');
+    if(/^Compliance/.test(s)) meta.compliance=s;
+    else if(/^Stab/.test(s)) meta.stab=s;
+    else if(/^Number of averages/.test(s)) meta.averages=s;
+    else if(/^Intensity calibration/.test(s)) meta.cal=s;
+    else if(/^Temperature/.test(s)) meta.temp=s;
+  }
+  const V=[], cols=Array.from({length:n},()=>[]);
+  for(let i=iv+2;i<rows.length;i++){
+    const r=rows[i]; if(!r[0] || r.length<n+1) continue;
+    const v=Number(r[0]); if(!isFinite(v)) continue;
+    V.push(v); for(let c=0;c<n;c++) cols[c].push(Number(r[c+1]));
+  }
+  if(V.length<5) throw new Error('fewer than five sweep points');
+  const steps=[]; for(let i=1;i<V.length;i++) steps.push(V[i]-V[i-1]);
+  steps.sort((a,b)=>a-b);
+  const step=steps[Math.floor(steps.length/2)];
+
+  const stem=fileName.replace(/\.[^.]+$/,'');
+  const channels={};
+  PX.forEach(p=>{
+    const li=idx[p+'_light']; if(li==null) return;
+    const INT=sum.INT[li], mode=classify(INT), curve=cols[li];
+    const voc=sum.V_OC[li], jsc=sum.J_SC[li], ff=sum.FF[li], area=sum.A[li], ece=sum.ECE[li];
+    const rec={ mode, INT:sg(INT), area:sg(area), voc:sg(voc), jsc:sg(jsc),
+                ff:sg(ff*100), pce:sg(ece*100), vmpp:sg(sum.V_MMP[li]), jmpp:sg(sum.J_MMP[li]),
+                jsc1sun: INT>1 ? sg(jsc*100/INT) : null,
+                curve: curve.map(x=>sg(x,4)) };
+    if(mode==='light'){
+      rec.rs=sg(slopeWindow(V,curve,voc,0.08));
+      rec.rsh=sg(slopeWindow(V,curve,0,0.15));
+      const [vm,pm]=refineMPP(V,curve);
+      rec.vmpp_fit=sg(vm);
+      rec.ff_fit=sg(voc*jsc ? 100*pm/Math.abs(voc*jsc) : null);
+      rec.pce_fit=sg(100*pm/INT);
+      const bad=[];
+      if(!(voc>=QC.voc[0]&&voc<=QC.voc[1])) bad.push('Voc');
+      if(!(Math.abs(jsc)>=QC.jsc[0]&&Math.abs(jsc)<=QC.jsc[1])) bad.push('Jsc');
+      if(!(ff>=QC.ff[0]&&ff<=QC.ff[1])) bad.push('FF');
+      if(!(ece*100>=QC.pce[0]&&ece*100<=QC.pce[1])) bad.push('PCE');
+      if(bad.length) rec.qc=bad;
+    }
+    const di=idx[p+'_dark']; if(di!=null) rec.dark=cols[di].map(x=>sg(x,4));
+    channels[p]=rec;
+  });
+  if(!Object.keys(channels).length) throw new Error('no pixel columns named a_light … f_light');
+
+  const sm=/^(sample\d+)/.exec(stem);
+  return { file:fileName, name:stem, mtime, sample: sm?sm[1]:stem, material:materialOf(stem), meta,
+           vmin:sg(V[0]), vmax:sg(V[V.length-1]), vstep:sg(step), npts:V.length, nchan:n+1, channels };
+}
+
+/* ---------------- import ---------------- */
+function readAsLatin1(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onerror=()=>rej(new Error('could not read the file'));
+    r.onload=()=>{ try{ res(new TextDecoder('windows-1252').decode(r.result)); }
+                   catch(e){ res(new TextDecoder('iso-8859-1').decode(r.result)); } };
+    r.readAsArrayBuffer(file);
+  });
+}
+async function importFiles(list){
+  const files=[...list]; if(!files.length) return;
+  const ok=[], bad=[];
+  for(const f of files){
+    try{ ok.push(parseDat(f.name, await readAsLatin1(f), f.lastModified||Date.now())); }
+    catch(err){ bad.push(f.name+': '+err.message); }
+  }
+  ok.forEach(s=>{
+    const i=SCANS.findIndex(x=>x.file===s.file);
+    if(i>=0) SCANS[i]=s; else SCANS.push(s);
+    delete S.removed[s.file];
+  });
+  reindex();
+  ok.forEach(s=>{ if(!groupOfFile(s.file)) S.groups.push({id:'g'+(S.seq++), files:[s.file]}); });
+  render();
+  if(ok.length && !bad.length) toast(`Imported ${ok.length} file${ok.length===1?'':'s'}`);
+  else if(ok.length) toast(`Imported ${ok.length}, skipped ${bad.length} — ${bad[0]}`);
+  else toast(`Nothing imported — ${bad[0]}`);
+}
+
+const fileIn=document.getElementById('fileIn');
+fileIn.addEventListener('change',()=>{ importFiles(fileIn.files); fileIn.value=''; });
+const pane1=document.getElementById('pane1');
+['dragenter','dragover'].forEach(ev=>pane1.addEventListener(ev,e=>{
+  if(!e.dataTransfer || ![...e.dataTransfer.types].includes('Files')) return;
+  e.preventDefault(); e.dataTransfer.dropEffect='copy'; pane1.classList.add('armed');
+}));
+pane1.addEventListener('dragleave',e=>{ if(!pane1.contains(e.relatedTarget)) pane1.classList.remove('armed'); });
+pane1.addEventListener('drop',e=>{
+  if(!e.dataTransfer || ![...e.dataTransfer.types].includes('Files')) return;
+  e.preventDefault(); pane1.classList.remove('armed'); importFiles(e.dataTransfer.files);
+});
+
+/* ================= results: group plots, table, export ================= */
+// first six validated all-pairs on a light ground (normal-vision ΔE 15.6, CVD 6.9 relieved by direct labels);
+// slots 7–8 are leftovers and no longer guaranteed to separate — the axis labels carry identity there.
+const SERIES_LIGHT = ['#2a78d6','#1baf7a','#eda100','#008300','#4a3aa7','#e34948','#eb6834','#e87ba4'];
+const METRICS = [
+  {k:'jsc', panel:'a', label:'J', sub:'SC', unit:'(mA cm⁻²)', dp:2},
+  {k:'voc', panel:'b', label:'V', sub:'OC', unit:'(V)',                dp:3},
+  {k:'ff',  panel:'c', label:'FF', sub:'',  unit:'(%)',                dp:1},
+  {k:'pce', panel:'d', label:'PCE', sub:'', unit:'(%)',                dp:2},
+];
+const seriesColor = i => SERIES_LIGHT[i % 8];
+const hollow = i => i >= 8;                       // 2nd cycle: same hue, open marker
+
+/* deterministic jitter so the figure never moves between renders */
+function jitter(key, span){
+  let h=0; for(let i=0;i<key.length;i++) h=(h*31+key.charCodeAt(i))|0;
+  return (((h>>>0)%1000)/1000 - 0.5)*span;
+}
+function niceTicks(lo,hi,target){
+  if(!(hi>lo)){ hi=lo+1; }
+  const raw=(hi-lo)/Math.max(2,target);
+  const mag=Math.pow(10,Math.floor(Math.log10(raw)));
+  const norm=raw/mag;
+  const step=(norm<=1?1:norm<=2?2:norm<=2.5?2.5:norm<=5?5:10)*mag;
+  const t0=Math.ceil(lo/step)*step, ts=[];
+  for(let v=t0; v<=hi+step*1e-9; v+=step) ts.push(Number(v.toFixed(10)));
+  return ts;
+}
+
+/* ---- what the figure is built from ---- */
+function plotGroups(){
+  const out=[];
+  S.groups.forEach(g=>{
+    const vals={jsc:[],voc:[],ff:[],pce:[]}, keys=[], samples=new Set();
+    let best=null;
+    g.files.forEach(f=>{
+      const s=byFile[f]; if(!s) return;
+      PX.forEach(p=>{
+        const c=s.channels[p];
+        if(!c || c.mode!=='light' || !pixOn(f,p)) return;
+        vals.jsc.push(Math.abs(c.jsc)); vals.voc.push(c.voc); vals.ff.push(c.ff); vals.pce.push(c.pce);
+        keys.push(K(f,p)); samples.add(s.sample);
+        if(!best || c.pce>best.c.pce) best={s,c,px:p,file:f};
+      });
+    });
+    if(!vals.pce.length) return;
+    const i=out.length;                       // numbering is contiguous over plotted groups only
+    out.push({id:g.id, num:i+1, name:gname(g), color:seriesColor(i), open:hollow(i),
+              vals, keys, n:vals.pce.length, samples:samples.size, files:g.files.slice(), best});
+  });
+  return out;
+}
+const groupNumber = id => { const g=plotGroups().find(x=>x.id===id); return g?g.num:null; };
+const mean = a => a.reduce((x,y)=>x+y,0)/a.length;
+const sd   = a => a.length<2 ? 0 : Math.sqrt(a.reduce((s,v)=>s+(v-mean(a))**2,0)/(a.length-1));
+
+/* ---- x tick label: split on ':' like a published figure ---- */
+function catLines(name){
+  const cut = name.indexOf(':');
+  let parts = cut>0 && cut<name.length-1 ? [name.slice(0,cut+1), name.slice(cut+1)] : [name];
+  return parts.map(p=> p.length>16 ? p.slice(0,15)+'…' : p).slice(0,2);
+}
+
+/* ---- the four panels ---- */
+function paramFigure(T){
+  const G=plotGroups();
+  if(!G.length) return null;
+  const pw=Math.max(196, G.length*46), ph=150;
+  const mL=54, mR=14, mT=24, mB=30, gapX=26, gapY=16;
+  const panelW=mL+pw+mR, panelH=mT+ph+mB;
+  const W=panelW*2+gapX, H=panelH*2+gapY;
+  let out='';
+
+  METRICS.forEach((M,mi)=>{
+    const ox=(mi%2)*(panelW+gapX), oy=Math.floor(mi/2)*(panelH+gapY);
+    const all=G.flatMap(g=>g.vals[M.k]);
+    let lo=Math.min(...all), hi=Math.max(...all);
+    G.forEach(g=>{ const m=mean(g.vals[M.k]), s=sd(g.vals[M.k]); lo=Math.min(lo,m-s); hi=Math.max(hi,m+s); });
+    const pad=(hi-lo||1)*0.14; lo-=pad; hi+=pad;
+    if(M.k!=='voc'){ lo=Math.min(lo,0); }
+    const ticks=niceTicks(lo,hi,4);
+    lo=Math.min(lo,ticks[0]); hi=Math.max(hi,ticks[ticks.length-1]);
+    const X=i=>ox+mL+(i+0.5)*(pw/G.length);
+    const Y=v=>oy+mT+(hi-v)/(hi-lo)*ph;
+    const band=Math.min(26,(pw/G.length)*0.5);
+
+    out+=`<text x="${ox+6}" y="${oy+14}" font-weight="700" font-size="12" fill="${T.ink}">${M.panel}</text>`;
+    out+=`<line x1="${ox+mL}" y1="${oy+mT}" x2="${ox+mL}" y2="${oy+mT+ph}" stroke="${T.ink}" stroke-width="1"/>`;
+    out+=`<line x1="${ox+mL}" y1="${oy+mT+ph}" x2="${ox+mL+pw}" y2="${oy+mT+ph}" stroke="${T.ink}" stroke-width="1"/>`;
+    ticks.forEach(tv=>{
+      const y=Y(tv);
+      out+=`<line x1="${ox+mL-4}" y1="${y.toFixed(1)}" x2="${ox+mL}" y2="${y.toFixed(1)}" stroke="${T.ink}"/>`;
+      out+=`<text x="${ox+mL-7}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="9" fill="${T.ink}">${
+        Number(tv.toFixed(6))}</text>`;
+    });
+    const axTitle = M.sub
+      ? `${M.label}<tspan baseline-shift="sub" font-size="7">${M.sub}</tspan> ${M.unit}`
+      : `${M.label} ${M.unit}`;
+    out+=`<text transform="translate(${ox+13},${oy+mT+ph/2}) rotate(-90)" text-anchor="middle"
+            font-size="10" fill="${T.ink}">${axTitle}</text>`;
+
+    G.forEach((g,gi)=>{
+      const xs=X(gi), v=g.vals[M.k], m=mean(v), s=sd(v);
+      v.forEach((val,k)=>{
+        const jx=xs+jitter(g.keys[k]+M.k, band*0.85);
+        out+=`<circle cx="${jx.toFixed(1)}" cy="${Y(val).toFixed(1)}" r="3" fill="${g.color}" opacity="0.42"/>`;
+      });
+      if(s>0){
+        out+=`<line x1="${xs}" y1="${Y(m-s).toFixed(1)}" x2="${xs}" y2="${Y(m+s).toFixed(1)}" stroke="${g.color}" stroke-width="1.2"/>`;
+        [m-s,m+s].forEach(e=>{ out+=`<line x1="${(xs-4).toFixed(1)}" y1="${Y(e).toFixed(1)}" x2="${(xs+4).toFixed(1)}" y2="${Y(e).toFixed(1)}" stroke="${g.color}" stroke-width="1.2"/>`; });
+      }
+      out+=`<line x1="${(xs-band*0.62).toFixed(1)}" y1="${Y(m).toFixed(1)}" x2="${(xs+band*0.62).toFixed(1)}" y2="${Y(m).toFixed(1)}" stroke="${g.color}" stroke-width="1.6"/>`;
+      const d=5.2, cy=Y(m);
+      out+=`<path d="M${xs},${(cy-d).toFixed(1)} L${(xs+d).toFixed(1)},${cy.toFixed(1)} L${xs},${(cy+d).toFixed(1)} L${(xs-d).toFixed(1)},${cy.toFixed(1)} Z"
+              fill="${g.open?T.surface:g.color}" stroke="${g.open?g.color:T.ink}" stroke-width="1"/>`;
+      out+=`<text x="${xs}" y="${oy+mT+ph+16}" text-anchor="middle" font-size="11" fill="${T.ink}">${g.num}</text>`;
+    });
+  });
+  return {svg:out, W, H};
+}
+
+/* ---- J(V) overlay ---- */
+function jvFigure(T){
+  const G=plotGroups();
+  if(!G.length) return null;
+  const W=440, H=300, mL=58, mR=14, mT=14, mB=44;
+  const pw=W-mL-mR, ph=H-mT-mB;
+  let jmin=0, vmax=0;
+  const items=[];
+  G.forEach(g=>{                       // one curve per group: its best-PCE pixel
+    if(!g.best) return;
+    const {s,c}=g.best;
+    if(c.jsc<jmin) jmin=c.jsc;
+    if(c.voc>vmax) vmax=c.voc;
+    items.push({s,c,color:g.color,num:g.num});
+  });
+  if(!items.length) return null;
+  const v0=-0.4, v1=Math.max(0.9, vmax*1.12);
+  const lo=jmin*1.18, hi=-jmin*0.30;
+  const X=v=>mL+(v-v0)/(v1-v0)*pw;
+  const Y=j=>mT+(hi-j)/(hi-lo)*ph;
+  let out=`<clipPath id="jvclip"><rect x="${mL}" y="${mT}" width="${pw}" height="${ph}"/></clipPath>`;
+  out+=`<rect x="${mL}" y="${mT}" width="${pw}" height="${ph}" fill="none" stroke="${T.line}"/>`;
+  niceTicks(lo,hi,5).forEach(tv=>{
+    const y=Y(tv); if(y<mT-1||y>mT+ph+1) return;
+    out+=`<line x1="${mL-4}" y1="${y.toFixed(1)}" x2="${mL}" y2="${y.toFixed(1)}" stroke="${T.ink}"/>`;
+    out+=`<text x="${mL-7}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="9" fill="${T.ink}">${Number(tv.toFixed(6))}</text>`;
+    if(Math.abs(tv)<1e-9) out+=`<line x1="${mL}" y1="${y.toFixed(1)}" x2="${mL+pw}" y2="${y.toFixed(1)}" stroke="${T.line}" stroke-dasharray="3 3"/>`;
+  });
+  niceTicks(v0,v1,5).forEach(tv=>{
+    const x=X(tv); if(x<mL-1||x>mL+pw+1) return;
+    out+=`<line x1="${x.toFixed(1)}" y1="${mT+ph}" x2="${x.toFixed(1)}" y2="${mT+ph+4}" stroke="${T.ink}"/>`;
+    out+=`<text x="${x.toFixed(1)}" y="${mT+ph+15}" text-anchor="middle" font-size="9" fill="${T.ink}">${Number(tv.toFixed(6))}</text>`;
+  });
+  out+=`<g clip-path="url(#jvclip)">`;
+  const labels=[];
+  items.forEach(({s,c,color,num})=>{
+    let d='', firstY=null;
+    for(let i=0;i<s.npts;i++){
+      const v=s.vmin+i*s.vstep;
+      if(v<v0-0.05||v>v1+0.05) continue;
+      const y=Y(c.curve[i]);
+      if(firstY==null && v>=v0) firstY=y;
+      d+=(d?'L':'M')+X(v).toFixed(1)+','+(y<-200?-200:y>H+200?H+200:y).toFixed(1);
+    }
+    out+=`<path d="${d}" fill="none" stroke="${color}" stroke-width="1.8" opacity="0.92"/>`;
+    if(firstY!=null) labels.push({y:Math.max(mT+7,Math.min(mT+ph-4,firstY)), color, num});
+  });
+  out+=`</g>`;
+  labels.sort((a,b)=>a.y-b.y);                       // nudge apart so two numbers never overlap
+  for(let i=1;i<labels.length;i++) if(labels[i].y-labels[i-1].y<11) labels[i].y=labels[i-1].y+11;
+  const overflow=labels.length?Math.max(0,labels[labels.length-1].y-(mT+ph-4)):0;
+  if(overflow>0) labels.forEach(l=>l.y-=overflow);
+  labels.forEach(l=>{ out+=`<text x="${mL+5}" y="${(l.y+3.5).toFixed(1)}" font-size="10" font-weight="700" fill="${l.color}">${l.num}</text>`; });
+  out+=`<text x="${mL+pw/2}" y="${H-6}" text-anchor="middle" font-size="10" fill="${T.ink}">Voltage (V)</text>`;
+  out+=`<text transform="translate(14,${mT+ph/2}) rotate(-90)" text-anchor="middle" font-size="10" fill="${T.ink}">Current density (mA cm⁻²)</text>`;
+  return {svg:out, W, H};
+}
+
+function keySVG(T,W,withBest){
+  const G=plotGroups(); if(!G.length) return {svg:'',H:0};
+  const colW=withBest?300:210;
+  const perRow=Math.max(1,Math.floor((W-16)/colW)), rows=Math.ceil(G.length/perRow);
+  let out=`<line x1="8" y1="6" x2="${W-8}" y2="6" stroke="${T.line}"/>`;
+  G.forEach((g,i)=>{
+    const x=10+(i%perRow)*colW, y=22+Math.floor(i/perRow)*14;
+    out+=`<rect x="${x}" y="${y-8}" width="10" height="10" rx="2" fill="${g.open?T.surface:g.color}" stroke="${g.color}"/>`;
+    out+=`<text x="${x+15}" y="${y}" font-size="9" font-weight="700" fill="${T.ink}">${g.num}</text>`;
+    let label=`${g.name}  ·  n = ${g.n} px, ${g.samples} sample${g.samples===1?'':'s'}`;
+    if(withBest && g.best) label=`${g.name}  —  ${fname(g.best.file)} · pixel ${g.best.px} · PCE ${g.best.c.pce.toFixed(2)}%`;
+    const eff = perRow===1 ? W-52 : colW-12;
+    const maxCh = Math.floor(eff/4.95);
+    if(label.length>maxCh) label=label.slice(0,maxCh-1)+'…';
+    out+=`<text x="${x+26}" y="${y}" font-size="9" fill="${T.ink}">${esc(label)}</text>`;
+  });
+  return {svg:out, H:rows*14+22};
+}
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+/* ---- wrap into a standalone svg document ---- */
+function svgDoc(parts,W,H,T,extraH){
+  const h=H+(extraH||0);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${h}" viewBox="0 0 ${W} ${h}"
+    font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif">
+    <rect width="${W}" height="${h}" fill="${T.surface}"/>${parts}</svg>`;
+}
+const THEME_EXPORT = {ink:'#0F1B21', muted:'#5A6C72', line:'#C9D4D5', surface:'#FFFFFF'};
+
+/* ---- summary table ---- */
+function summaryRows(){
+  return plotGroups().map(g=>({
+    num:g.num, name:g.name, n:g.n, samples:g.samples,
+    jsc:mean(g.vals.jsc), jscSD:sd(g.vals.jsc),
+    voc:mean(g.vals.voc), vocSD:sd(g.vals.voc),
+    ff:mean(g.vals.ff),   ffSD:sd(g.vals.ff),
+    pce:mean(g.vals.pce), pceSD:sd(g.vals.pce),
+    color:g.color
+  }));
+}
+function renderResults(){
+  const T=THEME_EXPORT;      // figures commit to a white ground in both themes: it is what gets published
+  const info=document.getElementById('resInfo');
+  const pf=paramFigure(T), jf=jvFigure(T), rows=summaryRows();
+  const gp=plotGroups();
+  info.textContent = gp.length
+    ? `${gp.length} group${gp.length===1?'':'s'} · ${gp.reduce((n,g)=>n+g.n,0)} illuminated pixels`
+    : 'nothing to plot yet';
+  document.getElementById('btnExport').disabled = !gp.length;
+
+  const pk = pf ? keySVG(T, pf.W, false) : {svg:'',H:0};
+  document.getElementById('figParams').innerHTML = pf
+    ? `<svg viewBox="0 0 ${pf.W} ${pf.H+pk.H}" class="fig" role="img" aria-label="Jsc, Voc, FF and PCE by group">${pf.svg}<g transform="translate(0,${pf.H})">${pk.svg}</g></svg>`
+    : `<p class="empty">Build a group in explorer 2 and its pixels appear here.</p>`;
+  const over=document.getElementById('figNote');
+  over.textContent = gp.length>6
+    ? `${gp.length} groups — the colour set is validated for six simultaneous series; past that, read identity from the axis labels and the legend, not the hue.`
+    : '';
+
+  const lg = jf ? keySVG(T, jf.W, true) : {svg:'',H:0};
+  document.getElementById('figJV').innerHTML = jf
+    ? `<svg viewBox="0 0 ${jf.W} ${jf.H+lg.H}" class="fig" role="img" aria-label="J(V) curves by group">${jf.svg}<g transform="translate(0,${jf.H})">${lg.svg}</g></svg>`
+    : '';
+
+  document.getElementById('tblWrap').innerHTML = rows.length ? `
+    <table class="summary"><thead><tr>
+      <th style="text-align:center">#</th><th>Group</th><th>J<sub>SC</sub> (mA cm⁻²)</th><th>V<sub>OC</sub> (V)</th><th>FF (%)</th><th>PCE (%)</th>
+    </tr></thead><tbody>${rows.map(r=>`<tr>
+      <td style="text-align:center;font-family:var(--f-mono);font-weight:600">${r.num}</td>
+      <td><i style="background:${r.color}"></i>${esc(r.name)}</td>
+      <td>${r.jsc.toFixed(2)}</td><td>${r.voc.toFixed(3)}</td><td>${r.ff.toFixed(2)}</td><td>${r.pce.toFixed(2)}</td>
+    </tr>`).join('')}</tbody></table>
+    <p class="tnote">Mean over included illuminated pixels. ${rows.map(r=>`${esc(r.name)} n=${r.n}/${r.samples}`).join(' · ')}
+      — pixels/substrates. SD, min and max travel in the exported CSV.</p>` : '';
+}
+
+/* ---- export ---- */
+function tableCSV(){
+  const head=['number','group','n_pixels','n_substrates',
+    'Jsc_mean_mAcm2','Jsc_sd','Voc_mean_V','Voc_sd','FF_mean_pct','FF_sd','PCE_mean_pct','PCE_sd',
+    'Jsc_min','Jsc_max','Voc_min','Voc_max','FF_min','FF_max','PCE_min','PCE_max'];
+  const G=plotGroups();
+  const lines=[head.join(',')];
+  G.forEach(g=>{
+    const q=k=>[Math.min(...g.vals[k]),Math.max(...g.vals[k])];
+    lines.push([g.num,JSON.stringify(g.name),g.n,g.samples,
+      mean(g.vals.jsc).toFixed(4),sd(g.vals.jsc).toFixed(4),
+      mean(g.vals.voc).toFixed(5),sd(g.vals.voc).toFixed(5),
+      mean(g.vals.ff).toFixed(3), sd(g.vals.ff).toFixed(3),
+      mean(g.vals.pce).toFixed(4),sd(g.vals.pce).toFixed(4),
+      ...q('jsc').map(x=>x.toFixed(4)),...q('voc').map(x=>x.toFixed(5)),
+      ...q('ff').map(x=>x.toFixed(3)),...q('pce').map(x=>x.toFixed(4))].join(','));
+  });
+  return lines.join('\n');
+}
+async function svgToPng(svgText, scale){
+  const m=/viewBox="0 0 ([\d.]+) ([\d.]+)"/.exec(svgText);
+  const w=+m[1], h=+m[2];
+  const url=URL.createObjectURL(new Blob([svgText],{type:'image/svg+xml;charset=utf-8'}));
+  try{
+    const img=new Image();
+    await new Promise((res,rej)=>{ img.onload=res; img.onerror=()=>rej(new Error('render failed')); img.src=url; });
+    const c=document.createElement('canvas'); c.width=Math.round(w*scale); c.height=Math.round(h*scale);
+    const g=c.getContext('2d'); g.fillStyle='#ffffff'; g.fillRect(0,0,c.width,c.height);
+    g.setTransform(scale,0,0,scale,0,0); g.drawImage(img,0,0,w,h);
+    return await new Promise(res=>c.toBlob(res,'image/png'));
+  } finally { URL.revokeObjectURL(url); }
+}
+let DL=null, dlAsked=false;
+async function saveOne(filename, data, altName, altData){
+  if(!dlAsked){ dlAsked=true; try{ DL = window.claude && claude.use ? await claude.use('downloads') : null; }catch(e){ DL=null; } }
+  if(DL){
+    try{ await DL.save({filename, data}); return {ok:true, name:filename}; }
+    catch(err){
+      const code=err && err.code;
+      if(code==='extension_not_enabled' && altName){
+        try{ await DL.save({filename:altName, data:altData}); return {ok:true, name:altName, downgraded:true}; }
+        catch(e2){ return {ok:false, why:(e2&&e2.code)||'unavailable', name:filename}; }
+      }
+      return {ok:false, why:code||'unavailable', name:filename};
+    }
+  }
+  // outside the artifact viewer (local file, own browser) a plain link still works
+  try{
+    const blob = data instanceof Blob ? data : new Blob([data],{type:'text/plain'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    return {ok:true, name:filename};
+  }catch(e){ return {ok:false, why:'unavailable', name:filename}; }
+}
+async function runExport(){
+  const wantP=document.getElementById('exP').checked;
+  const wantJ=document.getElementById('exJ').checked;
+  const wantT=document.getElementById('exT').checked;
+  const fmt=document.querySelector('input[name="fmt"]:checked').value;
+  const stamp=new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const T=THEME_EXPORT;
+  const done=[], failed=[];
+  const push=r=>{ (r.ok?done:failed).push(r.ok?(r.name+(r.downgraded?' (as .txt)':'')):`${r.name}: ${r.why}`); };
+
+  async function savePlot(fig, extra, base){
+    if(!fig) return;
+    const doc=svgDoc(fig.svg+(extra?extra.svg:''), fig.W, fig.H, T, extra?extra.H:0);
+    if(fmt==='png') push(await saveOne(`${base}_${stamp}.png`, await svgToPng(doc,3)));
+    else push(await saveOne(`${base}_${stamp}.svg`, doc, `${base}_${stamp}.txt`, doc));
+  }
+  if(wantP) await savePlot(paramFigure(T), null, 'jv_parameters');
+  if(wantJ){ const jf=jvFigure(T); await savePlot(jf, jf?legendSVG(T,jf.W):null, 'jv_curves'); }
+  if(wantT){ const csv=tableCSV(); push(await saveOne(`jv_summary_${stamp}.csv`, csv, `jv_summary_${stamp}.txt`, csv)); }
+
+  document.getElementById('expDlg').close();
+  if(done.length && !failed.length) toast(`Saved ${done.length} file${done.length===1?'':'s'}`);
+  else if(done.length) toast(`Saved ${done.length}, failed ${failed.length} — ${failed[0]}`);
+  else toast(`Nothing saved — ${failed[0]||'downloads unavailable in this view'}`);
+}
+
+/* toolbar + keys */
+document.body.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]'); if(!b) return;
+  switch(b.dataset.act){
+    case 'selAll': FILES.forEach(f=>sel.add(f)); render(); break;
+    case 'clearSel': sel.clear(); render(); break;
+    case 'expandAll': { const any=FILES.some(f=>!S.expanded[f]); FILES.forEach(f=>{ if(any) S.expanded[f]=true; else delete S.expanded[f]; }); render(); break; }
+    case 'group': if(sel.size) newGroup([...sel]); break;
+    case 'import': fileIn.click(); break;
+    case 'clearGroups': S.groups=[]; sel.clear(); render(); toast('All groups cleared — every file is ungrouped'); break;
+    case 'exportOpen': document.getElementById('expDlg').showModal(); break;
+    case 'restore': restoreAll(); break;
+    case 'mergeSel': { const ids=touchedGroups().map(g=>g.id); if(ids.length>1) mergeGroups(ids.slice(1), ids[0]); break; }
+    case 'delSel': { const ids=new Set(touchedGroups().map(g=>g.id));
+        S.groups=S.groups.filter(g=>!ids.has(g.id)); render();
+        toast('Groups removed — their files are back in explorer 1'); break; }
+    case 'reset': S=defaults(); sel.clear(); render(); toast('Back to one group per file'); break;
+  }
+});
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT') return;
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='a'){ e.preventDefault(); FILES.forEach(f=>sel.add(f)); render(); return; }
+  if(e.key==='Escape'){ sel.clear(); render(); return; }
+  if(e.key==='Enter' && sel.size){ e.preventDefault(); newGroup([...sel]); return; }
+  if(e.key==='F2' && sel.size===1){ e.preventDefault();
+    const f=[...sel][0]; const span=tiles.querySelector(`[data-name="${CSS.escape(f)}"]`); if(span) editName(span,f); }
+});
+
+let tt; function toast(m){ const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show');
+  clearTimeout(tt); tt=setTimeout(()=>t.classList.remove('show'),1700); }
+
+document.getElementById('btnDoExport').addEventListener('click',runExport);
+load(); reindex(); render();
+</script>
