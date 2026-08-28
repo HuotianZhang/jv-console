@@ -854,16 +854,47 @@ function parseDat(fileName, text, mtime){
     V.push(v); for(let c=0;c<n;c++) cols[c].push(Number(r[c+1]));
   }
   if(V.length<5) throw new Error('fewer than five sweep points');
+
+  /* A sweep run from positive to negative is stored descending. Turn it around so V always
+     ascends — every consumer here reconstructs voltage as vmin + i*vstep — but remember which
+     way it was measured, because forward and reverse scans are not the same experiment. */
+  const scan = V[V.length-1] < V[0] ? 'reverse' : 'forward';
+  if(scan==='reverse'){ V.reverse(); cols.forEach(c=>c.reverse()); }
+
   const steps=[]; for(let i=1;i<V.length;i++) steps.push(V[i]-V[i-1]);
   steps.sort((a,b)=>a-b);
   const step=steps[Math.floor(steps.length/2)];
+
+  /* On a reverse scan this LabVIEW writes V_OC and J_SC with inverted signs while V_MMP, J_MMP
+     and the curve keep the usual convention. Believe the curve, not the header: take J where the
+     sweep crosses 0 V and V where the current crosses zero, and flip a header value only when it
+     genuinely disagrees. On a normal file both tests pass and nothing changes. */
+  const interpAt=(xs,ys,x0)=>{
+    for(let i=0;i<xs.length-1;i++){
+      const a=xs[i], b=xs[i+1];
+      if((a-x0)*(b-x0)<=0 && a!==b) return ys[i]+(x0-a)/(b-a)*(ys[i+1]-ys[i]);
+    }
+    return null;
+  };
+  const zeroCross=(xs,ys)=>{
+    for(let i=0;i<ys.length-1;i++){
+      if(ys[i]*ys[i+1]<=0 && ys[i]!==ys[i+1]) return xs[i]-ys[i]*(xs[i+1]-xs[i])/(ys[i+1]-ys[i]);
+    }
+    return null;
+  };
 
   const stem=fileName.replace(/\.[^.]+$/,'');
   const channels={};
   PX.forEach(p=>{
     const li=idx[p+'_light']; if(li==null) return;
     const INT=sum.INT[li], mode=classify(INT), curve=cols[li];
-    const voc=sum.V_OC[li], jsc=sum.J_SC[li], ff=sum.FF[li], area=sum.A[li], ece=sum.ECE[li];
+    let voc=sum.V_OC[li], jsc=sum.J_SC[li];
+    const ff=sum.FF[li], area=sum.A[li], ece=sum.ECE[li];
+    if(mode==='light'){
+      const j0=interpAt(V,curve,0), vc=zeroCross(V,curve);
+      if(j0!=null && Math.abs(j0)>0.5 && jsc*j0<0) jsc=-jsc;
+      if(vc!=null && Math.abs(vc)>0.05 && voc*vc<0) voc=-voc;
+    }
     const rec={ mode, INT:sg(INT), area:sg(area), voc:sg(voc), jsc:sg(jsc),
                 ff:sg(ff*100), pce:sg(ece*100), vmpp:sg(sum.V_MMP[li]), jmpp:sg(sum.J_MMP[li]),
                 jsc1sun: INT>1 ? sg(jsc*100/INT) : null,
@@ -889,7 +920,7 @@ function parseDat(fileName, text, mtime){
 
   const sm=/^(sample\d+)/.exec(stem);
   return { file:fileName, name:stem, mtime, sample: sm?sm[1]:stem, material:materialOf(stem), meta,
-           vmin:sg(V[0]), vmax:sg(V[V.length-1]), vstep:sg(step), npts:V.length, nchan:n+1, channels };
+           vmin:sg(V[0]), vmax:sg(V[V.length-1]), vstep:sg(step), npts:V.length, nchan:n+1, scan, channels };
 }
 
 /* ---------------- import ---------------- */
@@ -1212,13 +1243,30 @@ function sciJVFigure(T,box){
   const G=plotGroups(); if(!G.length) return null;
   const W=box.W, H=box.H;
   const mT=SCI.fsLetter+2.5, mB=SCI.fsTick+SCI.fsAxis+8, mR=4;
-  let jmin=0, vmax=0; const items=[];
-  G.forEach((g,i)=>{ if(!g.best) return; const {s,c}=g.best;
-    if(c.jsc<jmin) jmin=c.jsc; if(c.voc>vmax) vmax=c.voc;
+  const items=[];
+  let vocMax=-Infinity, dataV0=Infinity, dataV1=-Infinity;
+  G.forEach(g=>{ if(!g.best) return; const {s,c}=g.best;
+    if(c.voc>vocMax) vocMax=c.voc;
+    if(s.vmin<dataV0) dataV0=s.vmin;
+    if(s.vmax>dataV1) dataV1=s.vmax;
     items.push({s,c,color:g.color,num:g.num}); });
   if(!items.length) return null;
-  const v0=-0.2, v1=Math.max(0.9, vmax*1.10);
-  const lo=jmin*1.15, hi=Math.max(-jmin*0.18, 2);
+
+  /* Frame on the data, never on an assumed sign. The window runs from a little below 0 V to just
+     past the largest V_OC; the current limits come from whatever the curves actually do inside it,
+     with the forward rise allowed only as headroom so it cannot flatten the photocurrent plateau. */
+  const v0 = Math.max(dataV0, -0.2);
+  const v1 = isFinite(vocMax) && vocMax>v0 ? Math.min(dataV1, vocMax*1.12) : dataV1;
+  let jlo=Infinity, jhi=-Infinity;
+  items.forEach(({s,c})=>{ for(let i=0;i<s.npts;i++){
+    const v=s.vmin+i*s.vstep; if(v<v0||v>v1) continue;
+    const j=c.curve[i]; if(!isFinite(j)) continue;
+    if(j<jlo) jlo=j; if(j>jhi) jhi=j;
+  }});
+  if(!isFinite(jlo)||!isFinite(jhi)){ jlo=-1; jhi=1; }
+  const span=(jhi-jlo)||1;
+  const lo=jlo-span*0.06;
+  const hi=Math.max(lo+span*0.15, jlo<0 ? Math.min(jhi+span*0.06, -jlo*0.25) : jhi+span*0.06);
   const t=tickSet(lo,hi,6), xt0=tickSet(v0,v1,6);
   const yt={lo,hi,maj:t.maj,minors:t.minors,step:t.step};
   const xt={lo:v0,hi:v1,maj:xt0.maj,minors:xt0.minors,step:xt0.step};

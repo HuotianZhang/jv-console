@@ -105,6 +105,23 @@ def refine_mpp(V, J):
     return vm, a * vm * vm + b * vm + c
 
 
+def interp_at(xs, ys, x0):
+    """y where the x series crosses x0, linearly interpolated; None if it never does."""
+    for i in range(len(xs) - 1):
+        a, b = xs[i], xs[i + 1]
+        if (a - x0) * (b - x0) <= 0 and a != b:
+            return ys[i] + (x0 - a) / (b - a) * (ys[i + 1] - ys[i])
+    return None
+
+
+def zero_cross(xs, ys):
+    """x where the y series crosses zero; None if it never does."""
+    for i in range(len(ys) - 1):
+        if ys[i] * ys[i + 1] <= 0 and ys[i] != ys[i + 1]:
+            return xs[i] - ys[i] * (xs[i + 1] - xs[i]) / (ys[i + 1] - ys[i])
+    return None
+
+
 def parse_file(path: str) -> dict:
     raw = io.open(path, encoding="iso-8859-1").read().replace("\r\n", "\n")
     rows = [ln.split("\t") for ln in raw.split("\n")]
@@ -150,6 +167,15 @@ def parse_file(path: str) -> dict:
     if len(V) < 5:
         raise ValueError("fewer than five sweep points")
 
+    # A sweep run from positive to negative is stored descending. Turn it around so V always
+    # ascends -- every consumer reconstructs voltage as vmin + i*vstep -- but remember which way
+    # it was measured, because forward and reverse scans are not the same experiment.
+    scan = "reverse" if V[-1] < V[0] else "forward"
+    if scan == "reverse":
+        V.reverse()
+        for c in cols:
+            c.reverse()
+
     steps = sorted(V[i] - V[i - 1] for i in range(1, len(V)))
     step = steps[len(steps) // 2]
 
@@ -164,6 +190,15 @@ def parse_file(path: str) -> dict:
         curve = cols[li]
         voc, jsc, ff = summary["V_OC"][li], summary["J_SC"][li], summary["FF"][li]
         area, ece = summary["A"][li], summary["ECE"][li]
+        # On a reverse scan this LabVIEW writes V_OC and J_SC with inverted signs while V_MMP,
+        # J_MMP and the curve keep the usual convention. Believe the curve, not the header, and
+        # flip a header value only when it genuinely disagrees.
+        if mode == "light":
+            j0, vc = interp_at(V, curve, 0.0), zero_cross(V, curve)
+            if j0 is not None and abs(j0) > 0.5 and jsc * j0 < 0:
+                jsc = -jsc
+            if vc is not None and abs(vc) > 0.05 and voc * vc < 0:
+                voc = -voc
         rec = dict(
             mode=mode, INT=sig(INT), area=sig(area),
             voc=sig(voc), jsc=sig(jsc), ff=sig(ff * 100), pce=sig(ece * 100),
@@ -203,7 +238,7 @@ def parse_file(path: str) -> dict:
         mtime=int(os.path.getmtime(path) * 1000),
         sample=sm.group(1) if sm else stem,
         material=material_of(stem), meta=meta,
-        vmin=sig(V[0]), vmax=sig(V[-1]), vstep=sig(step), npts=len(V),
+        vmin=sig(V[0]), vmax=sig(V[-1]), vstep=sig(step), npts=len(V), scan=scan,
         nchan=n + 1, channels=channels,
     )
 
