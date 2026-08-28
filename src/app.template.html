@@ -329,6 +329,7 @@ body.dragging *{cursor:grabbing!important}
   <span><kbd>Ctrl</kbd>+<kbd>A</kbd> all</span>
   <span><kbd>Esc</kbd> clear</span>
   <span><kbd>F2</kbd> rename</span>
+  <span class="w2">double-click a tile — pixels</span>
   <span class="w2"><kbd>Enter</kbd> group selected</span>
   <span class="w3">drag a card onto another to merge · × removes from the workspace, never from disk</span>
 </footer>
@@ -602,6 +603,10 @@ function range(a,b){ const i=FILES.indexOf(a), j=FILES.indexOf(b); if(i<0||j<0) 
 const tiles=document.getElementById('tiles');
 
 tiles.addEventListener('click',e=>{
+  /* Only the first click of a double-click counts. Without this, double-clicking x removed two
+     files: the tiles reflow after the first removal and the second click lands on whatever moved
+     into that spot. Same guard keeps a double-click on the chevron from toggling twice. */
+  if(e.detail>=2) return;
   const rm=e.target.closest('[data-rmf]');
   if(rm){ removeFile(rm.dataset.rmf); return; }
   const chev=e.target.closest('[data-exp]');
@@ -615,6 +620,20 @@ function removeFile(f){
 function restoreAll(){ S.removed={}; reindex();
   FILES.forEach(f=>{ if(!groupOfFile(f)) S.groups.push({id:'g'+(S.seq++), files:[f]}); });
   render(); toast('Removed files are back, each in its own group'); }
+/* double-click a tile to open or fold its pixel table — the same thing the chevron does, on a
+   target you cannot miss. The two presses underneath may have switched the selection off, so this
+   always leaves the file selected, the way opening an item in a file explorer does. Excluded: the
+   chevron and × (they have their own click), a rename box (double-click there selects a word), and
+   the pixel table itself (double-clicking a checkbox should not fold the tile out from under it). */
+tiles.addEventListener('dblclick',e=>{
+  if(e.target.closest('input') || e.target.closest('[data-exp]') ||
+     e.target.closest('[data-rmf]') || e.target.closest('.pixels')) return;
+  const tl=e.target.closest('.tile'); if(!tl) return;
+  const f=tl.dataset.f;
+  S.expanded[f] = !S.expanded[f];
+  sel.add(f); lastClicked=f;
+  render();
+});
 tiles.addEventListener('change',e=>{
   const cb=e.target.closest('input[data-px]'); if(!cb) return;
   const k=cb.dataset.px;
@@ -683,6 +702,9 @@ tiles.addEventListener('mousedown',e=>{
   const tl=e.target.closest('.tile'); if(!tl) return;
   const f=tl.dataset.f, onName=!!e.target.closest('[data-name]');
   renameCand=null; unselCand=null;
+  /* the second press of a double-click must not also toggle the selection or open a rename —
+     the dblclick handler below owns that gesture */
+  if(e.detail>=2){ pending=null; e.preventDefault(); return; }
   if(e.ctrlKey||e.metaKey){ toggle(f); render(); }
   else if(e.shiftKey && lastClicked){ range(lastClicked,f); lastClicked=f; render(); }
   else if(!sel.has(f)){ selectOnly(f); render(); }
