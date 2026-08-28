@@ -23,6 +23,9 @@
 }
 
 *{box-sizing:border-box}
+/* the browser's [hidden]{display:none} loses to any author rule of equal specificity — say it
+   louder, or a class that sets display quietly defeats the attribute */
+[hidden]{display:none!important}
 body{margin:0; background:var(--ground); color:var(--ink); font-family:var(--f-body); font-size:14px; line-height:1.5;
   -webkit-font-smoothing:antialiased}
 .page{max-width:1440px; margin:0 auto; padding:var(--s7) var(--s6) 64px; display:flex; flex-direction:column; gap:var(--s6)}
@@ -76,6 +79,9 @@ h1{font-family:var(--f-display); font-size:1.35rem; font-weight:600; margin:0; l
 .pane.armed{box-shadow:0 0 0 2px var(--accent) inset}
 
 /* ---------- explorer 1 · tiles ---------- */
+/* with no files the toolbar has nothing to act on — the empty state carries the two ways in */
+#pane1.folderEmpty > header .whenFiles{display:none}
+.emptyacts{display:flex; gap:var(--s5); justify-content:center; margin:var(--s6) 0 var(--s5)}
 #tiles{display:grid; grid-template-columns:repeat(auto-fill,minmax(164px,1fr)); gap:var(--s3);
   align-content:start; min-height:300px}
 .emptyfolder{grid-column:1/-1; border:1px dashed var(--line); padding:var(--s8) var(--s7);
@@ -266,22 +272,23 @@ body.dragging *{cursor:grabbing!important}
         <span class="psel" id="selInfo"></span>
         <span class="pcount" id="rmInfo" style="flex:none"></span>
         <span class="grow"></span>
-        <button class="btn" data-act="import">Import files…</button>
-        <button class="btn" data-act="watchPick">Watch folder…</button>
-        <span class="divider"></span>
-        <button class="lnk" data-act="expandAll">Expand all</button>
-        <button class="lnk" data-act="selAll">Select all</button>
-        <button class="lnk" data-act="clearSel">Clear</button>
-        <button class="btn primary" data-act="group" id="btnGroup" disabled>Group selected →</button>
+        <button class="btn whenFiles" data-act="import">Import files…</button>
+        <button class="btn whenFiles" data-act="watchPick">Watch folder…</button>
+        <span class="divider whenFiles"></span>
+        <button class="lnk whenFiles" data-act="expandAll">Expand all</button>
+        <button class="lnk whenFiles" data-act="selAll">Select all</button>
+        <button class="lnk whenFiles" data-act="clearSel">Clear</button>
+        <button class="lnk whenFiles" data-act="removeAll">Remove all</button>
+        <button class="btn primary whenFiles" data-act="group" id="btnGroup" disabled>Group selected →</button>
       </header>
       <div class="watchbar off" id="watchbar" hidden>
         <span class="dot"></span>
         <span class="wpath mono"></span>
         <span class="wstat mono"></span>
         <span class="grow"></span>
-        <button class="lnk" data-act="watchGrant">Reconnect</button>
-        <button class="lnk" data-act="watchNow">Check now</button>
-        <button class="lnk" data-act="watchStop">Stop</button>
+        <button class="lnk" data-act="watchGrant" hidden>Reconnect</button>
+        <button class="lnk" data-act="watchNow" hidden>Check now</button>
+        <button class="lnk" data-act="watchStop" hidden>Stop</button>
       </div>
       <div class="body"><div id="tiles"></div><div class="band" id="band" hidden></div></div>
     </section>
@@ -515,13 +522,18 @@ function groupChip(g){
 
 function renderTiles(){
   const el=document.getElementById('tiles');
+  document.getElementById('pane1').classList.toggle('folderEmpty', !FILES.length);
   const rm=Object.keys(S.removed).length;
   document.getElementById('rmInfo').innerHTML = rm
     ? `${rm} removed · <button class="linky" data-act="restore">put back</button>` : '';
   if(!FILES.length){
     el.innerHTML = `<div class="emptyfolder">
-      <p><b>No measurement files yet.</b></p>
-      <p>Press <em>Import files…</em> above, or drag <code>.dat</code> files straight onto this pane.
+      <p><b>No JV files yet.</b></p>
+      <div class="emptyacts">
+        <button class="btn primary" data-act="import">Import files…</button>
+        <button class="btn" data-act="watchPick">Watch folder…</button>
+      </div>
+      <p>…or drag <code>.dat</code> files straight onto this pane.
          They are parsed here in your browser — nothing is uploaded anywhere.</p></div>`;
     document.getElementById('folderCount').textContent='';
     document.getElementById('selInfo').textContent='';
@@ -617,9 +629,22 @@ function removeFile(f){
   reindex(); render();
   toast(`“${fname(f)}” removed — “put back” restores it`);
 }
-function restoreAll(){ S.removed={}; reindex();
+/* Removing everything would otherwise take the grouping with it — reindex drops a group once its
+   last file is gone. Snapshot it first so "put back" is a real undo, not just a re-import. */
+function removeAll(){
+  const n=FILES.length; if(!n) return;
+  S.gsnap=JSON.parse(JSON.stringify(S.groups));
+  FILES.forEach(f=>{ S.removed[f]=1; delete S.expanded[f]; });
+  sel.clear(); reindex(); render();
+  toast(`${n} file${n===1?'':'s'} removed from the workspace — “put back” restores them and your groups`);
+}
+function restoreAll(){
+  S.removed={};
+  if(S.gsnap){ S.groups=S.gsnap; delete S.gsnap; }
+  reindex();
   FILES.forEach(f=>{ if(!groupOfFile(f)) S.groups.push({id:'g'+(S.seq++), files:[f]}); });
-  render(); toast('Removed files are back, each in its own group'); }
+  render(); toast('Files are back, with the groups they were in');
+}
 /* double-click a tile to open or fold its pixel table — the same thing the chevron does, on a
    target you cannot miss. The two presses underneath may have switched the selection off, so this
    always leaves the file selected, the way opening an item in a file explorer does. Excluded: the
@@ -663,7 +688,7 @@ let band=null;
 const bandEl=document.getElementById('band');
 const bodyEl=tiles.parentElement;
 bodyEl.addEventListener('mousedown',e=>{
-  if(e.target.closest('.tile')||e.button!==0) return;
+  if(e.target.closest('.tile')||e.target.closest('button')||e.button!==0) return;
   const r=bodyEl.getBoundingClientRect();
   band={x0:e.clientX-r.left+bodyEl.scrollLeft, y0:e.clientY-r.top+bodyEl.scrollTop, add:e.ctrlKey||e.metaKey||e.shiftKey,
         base:new Set(sel)};
@@ -1563,6 +1588,7 @@ document.body.addEventListener('click',e=>{
   switch(b.dataset.act){
     case 'selAll': FILES.forEach(f=>sel.add(f)); render(); break;
     case 'clearSel': sel.clear(); render(); break;
+    case 'removeAll': removeAll(); break;
     case 'expandAll': { const any=FILES.some(f=>!S.expanded[f]); FILES.forEach(f=>{ if(any) S.expanded[f]=true; else delete S.expanded[f]; }); render(); break; }
     case 'group': if(sel.size) newGroup([...sel]); break;
     case 'import': fileIn.click(); break;
