@@ -160,6 +160,20 @@ h1{font-family:var(--f-display); font-size:1.35rem; font-weight:600; margin:0; l
 .resetbar{display:flex; align-items:baseline; gap:var(--s4); padding-top:var(--s3); border-top:1px solid var(--line)}
 .resetbar span{font:400 9.5px/1.4 var(--f-mono); color:var(--muted); flex:1}
 
+.watchbar{display:flex; align-items:center; gap:var(--s5); padding:var(--s3) var(--s5);
+  border-bottom:1px solid var(--line); background:var(--accent-soft); font:400 10.5px/1 var(--f-mono)}
+.watchbar.paused{background:var(--amber-soft)}
+.watchbar .dot{width:7px; height:7px; flex:none; background:var(--accent); border-radius:50%;
+  animation:beat 2s ease-in-out infinite}
+.watchbar.paused .dot{background:var(--amber); animation:none}
+@keyframes beat{0%,100%{opacity:1}50%{opacity:.25}}
+.watchbar .wpath{font-weight:600; color:var(--ink); white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis; max-width:280px}
+.watchbar .wstat{color:var(--ink-2); white-space:nowrap}
+.watchbar .wstat b{color:var(--accent)}
+.watchbar .lnk{color:var(--ink-2)}
+.badge.fresh{color:var(--surface); background:var(--accent)}
+
 /* ---------- results ---------- */
 #results .body{padding:var(--s6) var(--s5) var(--s5); display:flex; flex-direction:column; gap:var(--s6); overflow:visible}
 .blockhead{display:flex; align-items:baseline; gap:var(--s4); margin-bottom:var(--s4); flex-wrap:wrap}
@@ -238,12 +252,22 @@ body.dragging *{cursor:grabbing!important}
         <span class="pcount" id="rmInfo" style="flex:none"></span>
         <span class="grow"></span>
         <button class="btn" data-act="import">Import files…</button>
+        <button class="btn" data-act="watchPick">Watch folder…</button>
         <span class="divider"></span>
         <button class="lnk" data-act="expandAll">Expand all</button>
         <button class="lnk" data-act="selAll">Select all</button>
         <button class="lnk" data-act="clearSel">Clear</button>
         <button class="btn primary" data-act="group" id="btnGroup" disabled>Group selected →</button>
       </header>
+      <div class="watchbar off" id="watchbar" hidden>
+        <span class="dot"></span>
+        <span class="wpath mono"></span>
+        <span class="wstat mono"></span>
+        <span class="grow"></span>
+        <button class="lnk" data-act="watchGrant">Reconnect</button>
+        <button class="lnk" data-act="watchNow">Check now</button>
+        <button class="lnk" data-act="watchStop">Stop</button>
+      </div>
       <div class="body"><div id="tiles"></div><div class="band" id="band" hidden></div></div>
     </section>
 
@@ -296,15 +320,15 @@ body.dragging *{cursor:grabbing!important}
 <input type="file" id="fileIn" accept=".dat,.txt" multiple hidden>
 <dialog id="expDlg" class="exp">
   <h3>Export to disk</h3>
-  <label><input type="checkbox" id="exP" checked> Parameter plots — panels a–d, with the key</label>
-  <label><input type="checkbox" id="exJ" checked> J(V) curves — panel e, with the key</label>
+  <label><input type="checkbox" id="exP" checked> Parameter plots — a–d, 120 mm</label>
+  <label><input type="checkbox" id="exJ" checked> J(V) curves — panel e, 89 mm</label>
   <label><input type="checkbox" id="exT" checked> Summary table (CSV — carries SD, min and max)</label>
   <div class="fmt"><span>Plot format</span>
-    <label><input type="radio" name="fmt" value="png" checked> PNG (3×)</label>
-    <label><input type="radio" name="fmt" value="svg"> SVG (vector)</label>
+    <label><input type="radio" name="fmt" value="svg" checked> SVG (vector, sized in mm)</label>
+    <label><input type="radio" name="fmt" value="png"> PNG (600 dpi)</label>
   </div>
-  <p class="note">Figures export on a white ground — it is what gets published.
-     Your browser will ask you to confirm each file.</p>
+  <p class="note">Drawn at final print size: the plate 183 mm, parameters alone 120 mm, J(V) alone 89 mm,
+     Arial, 7 pt labels and 8 pt bold panel letters. White ground. Your browser confirms each file.</p>
   <div class="acts">
     <button class="btn" onclick="document.getElementById('expDlg').close()">Cancel</button>
     <button class="btn primary" id="btnDoExport">Save</button>
@@ -330,6 +354,8 @@ function reindex(){
 }
 
 let S, sel=new Set(), lastClicked=null, lastG=null;
+const FRESH={};            // file -> when the watcher last saw it change, for the "new" flag
+const FRESH_MS=15000;
 // selection lives on files; a group's state is derived from it, so the two panes can never disagree
 function gState(g){ const n=g.files.filter(f=>sel.has(f)).length;
   return n===0 ? 'none' : (n===g.files.length ? 'full' : 'part'); }
@@ -474,6 +500,7 @@ function renderTiles(){
         ${cls==='lowlight'?'<span class="badge low">low</span>':''}
         ${cls==='dark'?'<span class="badge dark">dark</span>':''}
         ${flagged?'<span class="badge flagged">⚑</span>':''}
+        ${(FRESH[f]&&Date.now()-FRESH[f]<FRESH_MS)?'<span class="badge fresh">new</span>':''}
         ${live<n?`<span class="pxab">${live}/${n}</span>`:''}
         ${!g ? '<span class="gtag none">ungrouped</span>'
              : (gname(g)!==fname(f) ? `<span class="gtag">${esc(gname(g))}</span>` : '')}
@@ -484,8 +511,9 @@ function renderTiles(){
   }).join('');
   const grouped=FILES.filter(f=>groupOfFile(f)).length;
   const px=FILES.filter(f=>groupOfFile(f)).reduce((n,f)=>n+livePixels(f).length,0);
+  const un=FILES.length-grouped;
   document.getElementById('folderCount').textContent =
-    `${FILES.length} file${FILES.length===1?'':'s'} · ${grouped} grouped · ${px} px`;
+    `${FILES.length} file${FILES.length===1?'':'s'} · ${px} px` + (un?` · ${un} ungrouped`:'');
   document.getElementById('selInfo').textContent = sel.size ? `${sel.size} selected` : '';
   document.getElementById('btnGroup').disabled = sel.size===0;
 }
@@ -936,16 +964,6 @@ function jitter(key, span){
   let h=0; for(let i=0;i<key.length;i++) h=(h*31+key.charCodeAt(i))|0;
   return (((h>>>0)%1000)/1000 - 0.5)*span;
 }
-function niceTicks(lo,hi,target){
-  if(!(hi>lo)){ hi=lo+1; }
-  const raw=(hi-lo)/Math.max(2,target);
-  const mag=Math.pow(10,Math.floor(Math.log10(raw)));
-  const norm=raw/mag;
-  const step=(norm<=1?1:norm<=2?2:norm<=2.5?2.5:norm<=5?5:10)*mag;
-  const t0=Math.ceil(lo/step)*step, ts=[];
-  for(let v=t0; v<=hi+step*1e-9; v+=step) ts.push(Number(v.toFixed(10)));
-  return ts;
-}
 
 /* ---- what the figure is built from ---- */
 function plotGroups(){
@@ -982,230 +1000,13 @@ function catLines(name){
   return parts.map(p=> p.length>16 ? p.slice(0,15)+'…' : p).slice(0,2);
 }
 
-/* ---- the four panels · a–d across one row by default ---- */
-function paramFigure(T, opt){
-  opt = opt || {};
-  const G=plotGroups();
-  if(!G.length) return null;
-  const cols   = opt.cols   || 4;
-  const pwPer  = opt.pwPer  || 34;
-  const gapX   = opt.gapX   || 24, gapY = opt.gapY || 18;
-  const lSize  = opt.letterSize || 13, lX = opt.panelLetterX || 0;
-  const pw=Math.max(140, G.length*pwPer);
-  /* the panel grows taller as it grows wider, so ten groups read like three and not like a strip */
-  const ph=opt.ph || Math.round(Math.max(112, Math.min(200, pw*0.52)));
-  const mL=52, mR=12, mT=22, mB=28;
-  const panelW=mL+pw+mR, panelH=mT+ph+mB;
-  const rows=Math.ceil(METRICS.length/cols);
-  const W=panelW*cols+gapX*(cols-1), H=panelH*rows+gapY*(rows-1);
-  let out='';
-
-  METRICS.forEach((M,mi)=>{
-    const ox=(mi%cols)*(panelW+gapX), oy=Math.floor(mi/cols)*(panelH+gapY);
-    const all=G.flatMap(g=>g.vals[M.k]);
-    let lo=Math.min(...all), hi=Math.max(...all);
-    G.forEach(g=>{ const m=mean(g.vals[M.k]), s=sd(g.vals[M.k]); lo=Math.min(lo,m-s); hi=Math.max(hi,m+s); });
-    const pad=(hi-lo||1)*0.14; lo-=pad; hi+=pad;
-    if(M.k!=='voc'){ lo=Math.min(lo,0); }
-    const ticks=niceTicks(lo,hi,4);
-    lo=Math.min(lo,ticks[0]); hi=Math.max(hi,ticks[ticks.length-1]);
-    const X=i=>ox+mL+(i+0.5)*(pw/G.length);
-    const Y=v=>oy+mT+(hi-v)/(hi-lo)*ph;
-    const band=Math.min(26,(pw/G.length)*0.5);
-
-    out+=`<text x="${ox+lX}" y="${oy+lSize}" font-weight="700" font-size="${lSize}" fill="${T.ink}">${M.panel}</text>`;
-    out+=`<line x1="${ox+mL}" y1="${oy+mT}" x2="${ox+mL}" y2="${oy+mT+ph}" stroke="${T.ink}" stroke-width="1"/>`;
-    out+=`<line x1="${ox+mL}" y1="${oy+mT+ph}" x2="${ox+mL+pw}" y2="${oy+mT+ph}" stroke="${T.ink}" stroke-width="1"/>`;
-    ticks.forEach(tv=>{
-      const y=Y(tv);
-      out+=`<line x1="${ox+mL-4}" y1="${y.toFixed(1)}" x2="${ox+mL}" y2="${y.toFixed(1)}" stroke="${T.ink}"/>`;
-      out+=`<text x="${ox+mL-7}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="9" fill="${T.ink}">${
-        Number(tv.toFixed(6))}</text>`;
-    });
-    const axTitle = M.sub
-      ? `${M.label}<tspan baseline-shift="sub" font-size="7">${M.sub}</tspan> ${M.unit}`
-      : `${M.label} ${M.unit}`;
-    out+=`<text transform="translate(${ox+12},${oy+mT+ph/2}) rotate(-90)" text-anchor="middle"
-            font-size="10" fill="${T.ink}">${axTitle}</text>`;
-
-    G.forEach((g,gi)=>{
-      const xs=X(gi), v=g.vals[M.k], m=mean(v), s=sd(v);
-      v.forEach((val,k)=>{
-        const jx=xs+jitter(g.keys[k]+M.k, band*0.85);
-        out+=`<circle cx="${jx.toFixed(1)}" cy="${Y(val).toFixed(1)}" r="3" fill="${g.color}" opacity="0.42"/>`;
-      });
-      if(s>0){
-        out+=`<line x1="${xs}" y1="${Y(m-s).toFixed(1)}" x2="${xs}" y2="${Y(m+s).toFixed(1)}" stroke="${g.color}" stroke-width="1.2"/>`;
-        [m-s,m+s].forEach(e=>{ out+=`<line x1="${(xs-4).toFixed(1)}" y1="${Y(e).toFixed(1)}" x2="${(xs+4).toFixed(1)}" y2="${Y(e).toFixed(1)}" stroke="${g.color}" stroke-width="1.2"/>`; });
-      }
-      out+=`<line x1="${(xs-band*0.62).toFixed(1)}" y1="${Y(m).toFixed(1)}" x2="${(xs+band*0.62).toFixed(1)}" y2="${Y(m).toFixed(1)}" stroke="${g.color}" stroke-width="1.6"/>`;
-      const d=5.2, cy=Y(m);
-      out+=`<path d="M${xs},${(cy-d).toFixed(1)} L${(xs+d).toFixed(1)},${cy.toFixed(1)} L${xs},${(cy+d).toFixed(1)} L${(xs-d).toFixed(1)},${cy.toFixed(1)} Z"
-              fill="${g.open?T.surface:g.color}" stroke="${g.open?g.color:T.ink}" stroke-width="1"/>`;
-      out+=`<text x="${xs}" y="${oy+mT+ph+15}" text-anchor="middle" font-size="11" font-family="${MONO}" fill="${T.ink}">${g.num}</text>`;
-    });
-  });
-  return {svg:out, W, H};
-}
-/* ---- J(V) overlay · panel e ---- */
-function jvFigure(T, opt){
-  opt = opt || {};
-  const G=plotGroups();
-  if(!G.length) return null;
-  const W=opt.W||460, H=opt.H||268, mL=56, mR=12, mT=14, mB=42;
-  const lSize=opt.letterSize||13, lX=opt.panelLetterX||0;
-  const pw=W-mL-mR, ph=H-mT-mB;
-  let jmin=0, vmax=0;
-  const items=[];
-  G.forEach(g=>{                       // one curve per group: its best-PCE pixel
-    if(!g.best) return;
-    const {s,c}=g.best;
-    if(c.jsc<jmin) jmin=c.jsc;
-    if(c.voc>vmax) vmax=c.voc;
-    items.push({s,c,color:g.color,num:g.num});
-  });
-  if(!items.length) return null;
-  const v0=-0.4, v1=Math.max(0.9, vmax*1.12);
-  const lo=jmin*1.18, hi=-jmin*0.30;
-  const X=v=>mL+(v-v0)/(v1-v0)*pw;
-  const Y=j=>mT+(hi-j)/(hi-lo)*ph;
-  const cid='jvclip'+Math.round(W);
-  let out='';
-  if(opt.letter) out+=`<text x="${lX}" y="${lSize}" font-weight="700" font-size="${lSize}" fill="${T.ink}">${opt.letter}</text>`;
-  out+=`<clipPath id="${cid}"><rect x="${mL}" y="${mT}" width="${pw}" height="${ph}"/></clipPath>`;
-  out+=`<rect x="${mL}" y="${mT}" width="${pw}" height="${ph}" fill="none" stroke="${T.line}"/>`;
-  niceTicks(lo,hi,5).forEach(tv=>{
-    const y=Y(tv); if(y<mT-1||y>mT+ph+1) return;
-    out+=`<line x1="${mL-4}" y1="${y.toFixed(1)}" x2="${mL}" y2="${y.toFixed(1)}" stroke="${T.ink}"/>`;
-    out+=`<text x="${mL-7}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="9" fill="${T.ink}">${Number(tv.toFixed(6))}</text>`;
-    if(Math.abs(tv)<1e-9) out+=`<line x1="${mL}" y1="${y.toFixed(1)}" x2="${mL+pw}" y2="${y.toFixed(1)}" stroke="${T.line}" stroke-dasharray="3 3"/>`;
-  });
-  niceTicks(v0,v1,5).forEach(tv=>{
-    const x=X(tv); if(x<mL-1||x>mL+pw+1) return;
-    out+=`<line x1="${x.toFixed(1)}" y1="${mT+ph}" x2="${x.toFixed(1)}" y2="${mT+ph+4}" stroke="${T.ink}"/>`;
-    out+=`<text x="${x.toFixed(1)}" y="${mT+ph+15}" text-anchor="middle" font-size="9" fill="${T.ink}">${Number(tv.toFixed(6))}</text>`;
-  });
-  out+=`<g clip-path="url(#${cid})">`;
-  const labels=[];
-  items.forEach(({s,c,color,num})=>{
-    let d='', firstY=null;
-    for(let i=0;i<s.npts;i++){
-      const v=s.vmin+i*s.vstep;
-      if(v<v0-0.05||v>v1+0.05) continue;
-      const y=Y(c.curve[i]);
-      if(firstY==null && v>=v0) firstY=y;
-      d+=(d?'L':'M')+X(v).toFixed(1)+','+(y<-200?-200:y>H+200?H+200:y).toFixed(1);
-    }
-    out+=`<path d="${d}" fill="none" stroke="${color}" stroke-width="1.8" opacity="0.92"/>`;
-    if(firstY!=null) labels.push({y:Math.max(mT+7,Math.min(mT+ph-4,firstY)), color, num});
-  });
-  out+=`</g>`;
-  labels.sort((a,b)=>a.y-b.y);                       // nudge apart so two numbers never overlap
-  for(let i=1;i<labels.length;i++) if(labels[i].y-labels[i-1].y<11) labels[i].y=labels[i-1].y+11;
-  const overflow=labels.length?Math.max(0,labels[labels.length-1].y-(mT+ph-4)):0;
-  if(overflow>0) labels.forEach(l=>l.y-=overflow);
-  labels.forEach(l=>{ out+=`<text x="${mL+5}" y="${(l.y+3.5).toFixed(1)}" font-size="10" font-weight="700" font-family="${MONO}" fill="${l.color}">${l.num}</text>`; });
-  out+=`<text x="${mL+pw/2}" y="${H-6}" text-anchor="middle" font-size="10" fill="${T.ink}">Voltage (V)</text>`;
-  out+=`<text transform="translate(13,${mT+ph/2}) rotate(-90)" text-anchor="middle" font-size="10" fill="${T.ink}">Current density (mA cm⁻²)</text>`;
-  return {svg:out, W, H};
-}
-/* ---- one key for the whole plate: swatch, number, name, then the provenance line ---- */
-const MONO = "'IBM Plex Mono', ui-monospace, monospace";
-const clip = (s,n) => s.length<=n ? s : (n>14 ? s.slice(0,n-10)+'…'+s.slice(-9) : s.slice(0,Math.max(1,n-1))+'…');
-function richKey(G,T,W,cols,withBest){
-  const colW=W/cols, rowH=46;
-  let out='';
-  G.forEach((g,i)=>{
-    const x=(i%cols)*colW, y=Math.floor(i/cols)*rowH;
-    out+=`<rect x="${x}" y="${y}" width="11" height="11" fill="${g.open?T.surface:g.color}" stroke="${g.color}"/>`;
-    out+=`<text x="${x+18}" y="${y+10}" font-size="11" font-weight="700" font-family="${MONO}" fill="${T.ink}">${g.num}</text>`;
-    out+=`<text x="${x+34}" y="${y+10}" font-size="11" font-family="${MONO}" fill="${T.ink}">${esc(clip(g.name,Math.floor((colW-44)/6.7)))}</text>`;
-    let line=`n = ${g.n} px, ${g.samples} sample${g.samples===1?'':'s'}`;
-    if(withBest && g.best) line+=`  ·  best ${fname(g.best.file)} px ${g.best.px}, PCE ${g.best.c.pce.toFixed(2)}%`;
-    out+=`<text x="${x+34}" y="${y+25}" font-size="9" font-family="${MONO}" fill="${T.muted}">${esc(clip(line,Math.floor((colW-44)/5.4)))}</text>`;
-  });
-  return {svg:out, H:Math.ceil(G.length/cols)*rowH};
-}
-const capLine = (l,i) => `<text x="0" y="${i*14}" font-size="9.5" fill="#5A6C72">${esc(l)}</text>`;
-const CAP_AD = 'Panels a–d — one circle per included illuminated pixel, jittered horizontally; the bar and diamond mark the group mean, whiskers ±1 SD.';
-const CAP_E  = 'Panel e — the best-PCE pixel of each group, labelled at its J_SC.';
-const CAP_N  = 'The numbers are the same groups in every panel, in the order they were built. Mean, SD, min, max and n travel in the exported CSV.';
-
-/* one builder, three slices: the whole plate on screen, panels a–d or panel e on export */
-function plate(T, opt){
-  opt = opt || {};
-  const want = opt.want || 'all';
-  const G=plotGroups(); if(!G.length) return null;
-  const M=16;                                       // outer margin inside the frame
-
-  if(want==='params'){
-    const pf=paramFigure(T,{cols:4, pwPer:40, ph:150});
-    if(!pf) return null;
-    const k=richKey(G,T,pf.W,Math.min(3,G.length)||1,false);
-    const cap=[CAP_AD, CAP_N];
-    const keyY=pf.H+26, capY=keyY+k.H+26;
-    return {W:pf.W+M*2, H:capY+cap.length*14+6, svg:
-      `<g transform="translate(${M},14)">${pf.svg}</g>`+
-      `<text x="${M}" y="${keyY+4}" font-size="9" font-weight="700" letter-spacing="1.4" fill="${T.muted}">KEY</text>`+
-      `<g transform="translate(${M},${keyY+18})">${k.svg}</g>`+
-      `<line x1="${M}" y1="${capY-14}" x2="${pf.W+M}" y2="${capY-14}" stroke="${T.line}"/>`+
-      `<g transform="translate(${M},${capY})">${cap.map(capLine).join('')}</g>`};
-  }
-
-  if(want==='jv'){
-    const jvW=540, jvH=340, keyW=600;
-    const jf=jvFigure(T,{W:jvW,H:jvH,letter:'e'});
-    if(!jf) return null;
-    const k=richKey(G,T,keyW,1,true);
-    const cap=[CAP_E, CAP_N];
-    const W=M*2+jvW+24+keyW;
-    const bodyH=Math.max(jf.H, 18+k.H), capY=14+bodyH+26;
-    return {W, H:capY+cap.length*14+6, svg:
-      `<g transform="translate(${M},14)">${jf.svg}</g>`+
-      `<text x="${M+jvW+24}" y="${18}" font-size="9" font-weight="700" letter-spacing="1.4" fill="${T.muted}">KEY</text>`+
-      `<g transform="translate(${M+jvW+24},${32})">${k.svg}</g>`+
-      `<line x1="${M}" y1="${capY-14}" x2="${W-M}" y2="${capY-14}" stroke="${T.line}"/>`+
-      `<g transform="translate(${M},${capY})">${cap.map(capLine).join('')}</g>`};
-  }
-
-  /* 'all' — the reading surface: a–d across the top, a rule, then e beside the key */
-  const pf=paramFigure(T,{cols:4, pwPer:34, ph:112});
-  const jvW=460, jvH=268;
-  const jf=jvFigure(T,{W:jvW,H:jvH,letter:'e'});
-  if(!pf||!jf) return null;
-  const keyMin=620;
-  const inner=Math.max(pf.W, jvW+24+keyMin);
-  const W=inner+M*2, keyX=M+jvW+24, keyW=W-M-keyX;
-  const k=richKey(G,T,keyW,2,false);
-  const src=G.filter(g=>g.best).map(g=>`${g.num}   ${fname(g.best.file)} · px ${g.best.px} · PCE ${g.best.c.pce.toFixed(2)}%`);
-  const srcCols=2, srcSvg=src.map((l,i)=>{
-    const x=(i%srcCols)*(keyW/srcCols), y=Math.floor(i/srcCols)*15;
-    return `<text x="${x}" y="${y}" font-size="9" font-family="${MONO}" fill="${T.ink}">${esc(clip(l,Math.floor((keyW/srcCols-8)/5.4)))}</text>`;
-  }).join('');
-  const srcH=Math.ceil(src.length/srcCols)*15;
-  const cap=[CAP_AD, CAP_E, CAP_N];
-  const ruleY=pf.H+20, row2Y=ruleY+22;
-  const keyBlockH=18+k.H+26+14+srcH;
-  const bodyH=Math.max(jf.H, keyBlockH);
-  const capY=row2Y+bodyH+22;
-  return {W, H:capY+cap.length*14+6, svg:
-    `<g transform="translate(${M},14)">${pf.svg}</g>`+
-    `<line x1="${M}" y1="${ruleY}" x2="${W-M}" y2="${ruleY}" stroke="${T.ink}" stroke-width="1"/>`+
-    `<g transform="translate(${M},${row2Y})">${jf.svg}</g>`+
-    `<text x="${keyX}" y="${row2Y+4}" font-size="9" font-weight="700" letter-spacing="1.4" fill="${T.muted}">KEY</text>`+
-    `<g transform="translate(${keyX},${row2Y+18})">${k.svg}</g>`+
-    `<text x="${keyX}" y="${row2Y+18+k.H+14}" font-size="9" font-weight="700" letter-spacing="1.4" fill="${T.muted}">PANEL E · CURVE SOURCE</text>`+
-    `<g transform="translate(${keyX},${row2Y+18+k.H+32})">${srcSvg}</g>`+
-    `<line x1="${M}" y1="${capY-14}" x2="${W-M}" y2="${capY-14}" stroke="${T.line}"/>`+
-    `<g transform="translate(${M},${capY})">${cap.map(capLine).join('')}</g>`};
-}
-const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-
 /* ---- wrap into a standalone svg document ---- */
-function svgDoc(parts,W,H,T,extraH){
+/* one drawing unit is one point, so a physical width makes the pt sizes in the file literal */
+function svgDoc(parts,W,H,T,extraH,mm){
   const h=H+(extraH||0);
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${h}" viewBox="0 0 ${W} ${h}"
-    font-family="'IBM Plex Sans', Helvetica, Arial, sans-serif">
+  const dim = mm ? `width="${mm}mm" height="${(mm*h/W).toFixed(3)}mm"` : `width="${W}" height="${h}"`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" ${dim} viewBox="0 0 ${W} ${h}"
+    font-family="${SCI.font}">
     <rect width="${W}" height="${h}" fill="${T.surface}"/>${parts}</svg>`;
 }
 const THEME_EXPORT = {ink:'#0F1B21', muted:'#5A6C72', line:'#C9D4D5', surface:'#FFFFFF'};
@@ -1247,13 +1048,275 @@ function renderResults(){
       <td>${r.n} / ${r.samples}</td>
     </tr>`).join('')}</tbody></table>` : '';
 
-  const pl = plate(T,{want:'all'});
+  const pl = sciPlate(T,{want:'all'});
   document.getElementById('plateWrap').innerHTML = pl
     ? `<div class="blockhead"><b>Figure 1 · a–e</b>
-         <span>one plate, one key · white ground in the app and in the export, because it is what gets published</span></div>
-       <svg viewBox="0 0 ${pl.W} ${pl.H}" class="fig" role="img"
+         <span>183 mm double column · Arial · 7 pt labels, 8 pt bold panel letters — Nature figure sizing</span></div>
+       <svg viewBox="0 0 ${pl.W} ${pl.H}" class="fig" role="img" font-family="${SCI.font}"
             aria-label="Jsc, Voc, FF, PCE and J(V) curves by group">${pl.svg}</svg>`
     : `<p class="empty">Build a group on the right and its pixels appear here.</p>`;
+}
+
+/* ================= the figure, authored at final print size =================
+   Nature: 183 mm double column, 120 mm column-and-a-half, 89 mm single column; panel letters 8 pt
+   bold, every other label 5–7 pt, sans-serif. So the drawing units here ARE points — one user unit
+   is 1/72 inch — and the exported file carries its width in millimetres. A 7 pt label in this code
+   is 7 pt on the page, not a number that means whatever the placement scale happens to be. */
+const MM = 72/25.4;                                  // points per millimetre
+const WIDTH = {single:89*MM, half:120*MM, double:183*MM};
+const SCI = {
+  font: "Arial, Helvetica, 'Liberation Sans', sans-serif",
+  fsTick: 7, fsAxis: 7, fsLetter: 8, fsLeg: 7, fsCap: 6.5,   // the top of the 5–7 pt band, and 8 pt bold letters
+  lwFrame: 0.5, lwData: 1.0, lwBox: 0.6,
+  tkMaj: 3.2, tkMin: 1.8,
+  rPoint: 0.85, rMean: 2.1,
+  emW: 0.50,                                         // Arial average advance, for wrapping and clipping
+};
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+/* keep the tail: sample6…syncLockin and sample6…correctConnection have to stay tellable apart */
+const clip = (s,n) => s.length<=n ? s : (n>14 ? s.slice(0,n-10)+'…'+s.slice(-9) : s.slice(0,Math.max(1,n-1))+'…');
+const SHAPES = ['square','circle','triangleUp','diamond','triangleDown','hexagon','triangleLeft','triangleRight'];
+const seriesShape = i => SHAPES[i % SHAPES.length];
+const chars = (w,fs) => Math.max(4, Math.floor(w/(fs*SCI.emW)));
+
+function markerPath(shape,cx,cy,r){
+  const k=0.866;
+  switch(shape){
+    case 'circle':        return `M ${cx-r} ${cy} a ${r} ${r} 0 1 0 ${2*r} 0 a ${r} ${r} 0 1 0 ${-2*r} 0`;
+    case 'square':        { const s=r*0.88; return `M ${cx-s} ${cy-s} H ${cx+s} V ${cy+s} H ${cx-s} Z`; }
+    case 'triangleUp':    { const s=r*1.16; return `M ${cx} ${cy-s} L ${cx+s*k} ${cy+s*0.5} L ${cx-s*k} ${cy+s*0.5} Z`; }
+    case 'triangleDown':  { const s=r*1.16; return `M ${cx} ${cy+s} L ${cx+s*k} ${cy-s*0.5} L ${cx-s*k} ${cy-s*0.5} Z`; }
+    case 'triangleLeft':  { const s=r*1.16; return `M ${cx-s} ${cy} L ${cx+s*0.5} ${cy-s*k} L ${cx+s*0.5} ${cy+s*k} Z`; }
+    case 'triangleRight': { const s=r*1.16; return `M ${cx+s} ${cy} L ${cx-s*0.5} ${cy-s*k} L ${cx-s*0.5} ${cy+s*k} Z`; }
+    case 'diamond':       { const s=r*1.22; return `M ${cx} ${cy-s} L ${cx+s} ${cy} L ${cx} ${cy+s} L ${cx-s} ${cy} Z`; }
+    case 'hexagon':       { const s=r*1.08; let d=''; for(let i=0;i<6;i++){ const a=Math.PI/6+i*Math.PI/3;
+                            d+=(i?'L':'M')+(cx+s*Math.cos(a)).toFixed(2)+' '+(cy+s*Math.sin(a)).toFixed(2)+' '; } return d+'Z'; }
+    default:              return `M ${cx-r} ${cy} a ${r} ${r} 0 1 0 ${2*r} 0 a ${r} ${r} 0 1 0 ${-2*r} 0`;
+  }
+}
+
+/* Its own nice-number ladder: rounding 2.23 UP to a 2.5 step puts 0.25 V ticks on a voltage axis.
+   Rounding down to 2 gives the 0.2 spacing a printed axis expects. */
+function sciNice(lo,hi,target){
+  if(!(hi>lo)) hi=lo+1;
+  const raw=(hi-lo)/Math.max(2,target);
+  const mag=Math.pow(10,Math.floor(Math.log10(raw))), n=raw/mag;
+  const step=(n<1.5?1:n<3?2:n<7?5:10)*mag;
+  const t0=Math.ceil(lo/step)*step, ts=[];
+  for(let v=t0; v<=hi+step*1e-9; v+=step) ts.push(Number(v.toFixed(10)));
+  return ts;
+}
+function tickSet(lo,hi,target){
+  const maj=sciNice(lo,hi,target);
+  const step=maj.length>1 ? maj[1]-maj[0] : (hi-lo)||1;
+  const mant=step/Math.pow(10,Math.floor(Math.log10(Math.abs(step))));
+  const n=Math.abs(mant-2)<0.05 ? 4 : 5;
+  const sub=step/n, minors=[];
+  for(let v=maj[0]-step; v<=hi+step*1.001; v+=sub){
+    const q=Number(v.toFixed(10));
+    if(q>=lo-1e-12 && q<=hi+1e-12 && !maj.some(m=>Math.abs(m-q)<sub*1e-3)) minors.push(q);
+  }
+  return {maj, minors, step};
+}
+/* enough decimals to write the step exactly — a 0.25 step must not print as 0.3 — and the same
+   count on every label of the axis, which is how a printed axis is set */
+function decFor(step){
+  const s=Math.abs(step);
+  for(let d=0; d<=6; d++){ const m=s*Math.pow(10,d); if(Math.abs(m-Math.round(m))<1e-9) return d; }
+  return 3;
+}
+const fmtTick = (v,step) => { const d=decFor(step); return (Math.abs(v)<step*1e-9?0:v).toFixed(d); };
+const tickW = t => Math.max(...t.maj.map(v=>fmtTick(v,t.step).length))*SCI.fsTick*SCI.emW;
+
+function frameSVG(x,y,w,h,T,yt,xt){
+  const o=[`<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" fill="none" stroke="${T.ink}" stroke-width="${SCI.lwFrame}"/>`];
+  const Y=v=>y+h-(v-yt.lo)/(yt.hi-yt.lo)*h;
+  const tk=(a,b,c,d)=>`<line x1="${a.toFixed(2)}" y1="${b.toFixed(2)}" x2="${c.toFixed(2)}" y2="${d.toFixed(2)}" stroke="${T.ink}" stroke-width="${SCI.lwFrame}"/>`;
+  yt.minors.forEach(v=>{ const p=Y(v); o.push(tk(x,p,x+SCI.tkMin,p), tk(x+w,p,x+w-SCI.tkMin,p)); });
+  yt.maj.forEach(v=>{ const p=Y(v);
+    o.push(tk(x,p,x+SCI.tkMaj,p), tk(x+w,p,x+w-SCI.tkMaj,p));
+    o.push(`<text x="${(x-2.6).toFixed(2)}" y="${(p+SCI.fsTick*0.35).toFixed(2)}" text-anchor="end" font-size="${SCI.fsTick}" fill="${T.ink}">${fmtTick(v,yt.step)}</text>`);
+  });
+  if(xt){
+    const X=v=>x+(v-xt.lo)/(xt.hi-xt.lo)*w;
+    xt.minors.forEach(v=>{ const p=X(v); o.push(tk(p,y+h,p,y+h-SCI.tkMin), tk(p,y,p,y+SCI.tkMin)); });
+    xt.maj.forEach(v=>{ const p=X(v);
+      o.push(tk(p,y+h,p,y+h-SCI.tkMaj), tk(p,y,p,y+SCI.tkMaj));
+      o.push(`<text x="${p.toFixed(2)}" y="${(y+h+SCI.fsTick+2.2).toFixed(2)}" text-anchor="middle" font-size="${SCI.fsTick}" fill="${T.ink}">${fmtTick(v,xt.step)}</text>`);
+    });
+  }
+  return o.join('');
+}
+const axLabel = m => m.sub
+  ? `<tspan font-style="italic">${m.label}</tspan><tspan baseline-shift="sub" font-size="${SCI.fsTick-1.4}">${m.sub}</tspan> ${m.unit}`
+  : `${m.label} ${m.unit}`;
+
+function quantile(s,p){ const h=(s.length-1)*p, i=Math.floor(h); return s[i]+(h-i)*((s[i+1]===undefined?s[i]:s[i+1])-s[i]); }
+function boxStats(vals){
+  const s=[...vals].sort((a,b)=>a-b);
+  const q1=quantile(s,0.25), med=quantile(s,0.5), q3=quantile(s,0.75), iqr=q3-q1;
+  const lof=q1-1.5*iqr, hif=q3+1.5*iqr;
+  const inl=s.filter(v=>v>=lof&&v<=hif);
+  return {q1,med,q3, wlo:inl.length?inl[0]:s[0], whi:inl.length?inl[inl.length-1]:s[s.length-1],
+          out:s.filter(v=>v<lof||v>hif), mean:mean(s), n:s.length};
+}
+
+/* a–d packed into a given box: the panels take the width they are given, so the plate stays the
+   width a journal asked for however many groups you built */
+function sciParamFigure(T,box){
+  const G=plotGroups(); if(!G.length) return null;
+  const cols=box.cols||2, rows=Math.ceil(METRICS.length/cols);
+  const gapX=box.gapX||14, gapY=box.gapY||13;
+  const panelW=(box.W-gapX*(cols-1))/cols, panelH=(box.H-gapY*(rows-1))/rows;
+  const mL=30, mR=4, mT=SCI.fsLetter+2.5, mB=SCI.fsTick+8;
+  const pw=panelW-mL-mR, ph=panelH-mT-mB;
+  let out='';
+  METRICS.forEach((M,mi)=>{
+    const ox=(mi%cols)*(panelW+gapX)+mL, oy=Math.floor(mi/cols)*(panelH+gapY)+mT;
+    let lo=Infinity, hi=-Infinity;
+    G.forEach(g=>g.vals[M.k].forEach(v=>{ if(v<lo)lo=v; if(v>hi)hi=v; }));
+    const pad=(hi-lo||Math.abs(hi)||1)*0.12; lo-=pad; hi+=pad;
+    if(M.k!=='voc') lo=Math.min(lo,0);
+    const t=tickSet(lo,hi,6);   // 6 keeps FF on 10s rather than jumping to 20s
+    const yt={lo:Math.min(lo,t.maj[0]), hi:Math.max(hi,t.maj[t.maj.length-1]), maj:t.maj, minors:t.minors, step:t.step};
+    const Y=v=>oy+ph-(v-yt.lo)/(yt.hi-yt.lo)*ph;
+    const slot=pw/G.length, X=i=>ox+(i+0.5)*slot;
+    const bw=Math.min(9,slot*0.46), cap=bw*0.42;
+
+    out+=`<text x="${(ox-mL).toFixed(2)}" y="${(oy-2.5).toFixed(2)}" font-size="${SCI.fsLetter}" font-weight="700" fill="${T.ink}">${M.panel}</text>`;
+    out+=frameSVG(ox,oy,pw,ph,T,yt,null);
+    out+=`<text transform="translate(${(ox-mL+SCI.fsAxis).toFixed(2)},${(oy+ph/2).toFixed(2)}) rotate(-90)" text-anchor="middle" font-size="${SCI.fsAxis}" fill="${T.ink}">${axLabel(M)}</text>`;
+    const cid='cp'+M.k+mi;
+    out+=`<clipPath id="${cid}"><rect x="${ox.toFixed(2)}" y="${oy.toFixed(2)}" width="${pw.toFixed(2)}" height="${ph.toFixed(2)}"/></clipPath><g clip-path="url(#${cid})">`;
+    G.forEach((g,gi)=>{
+      const xs=X(gi), b=boxStats(g.vals[M.k]), c=g.color;
+      g.vals[M.k].forEach((v,k)=>{
+        const jx=xs+jitter(g.keys[k]+M.k, slot*0.30);
+        out+=`<circle cx="${jx.toFixed(2)}" cy="${Y(v).toFixed(2)}" r="${SCI.rPoint}" fill="${c}" fill-opacity="0.5"/>`;
+      });
+      const L=(a,bb,cc,d,w)=>`<line x1="${a.toFixed(2)}" y1="${bb.toFixed(2)}" x2="${cc.toFixed(2)}" y2="${d.toFixed(2)}" stroke="${c}" stroke-width="${w||SCI.lwBox}"/>`;
+      out+=L(xs,Y(b.whi),xs,Y(b.q3))+L(xs,Y(b.q1),xs,Y(b.wlo));
+      out+=L(xs-cap,Y(b.whi),xs+cap,Y(b.whi))+L(xs-cap,Y(b.wlo),xs+cap,Y(b.wlo));
+      out+=`<rect x="${(xs-bw/2).toFixed(2)}" y="${Y(b.q3).toFixed(2)}" width="${bw.toFixed(2)}" height="${Math.max(0.5,Y(b.q1)-Y(b.q3)).toFixed(2)}" fill="${c}" fill-opacity="0.16" stroke="${c}" stroke-width="${SCI.lwBox}"/>`;
+      out+=L(xs-bw/2,Y(b.med),xs+bw/2,Y(b.med),SCI.lwBox*1.8);
+      b.out.forEach(v=>{ out+=`<circle cx="${xs.toFixed(2)}" cy="${Y(v).toFixed(2)}" r="${(SCI.rPoint*1.5).toFixed(2)}" fill="none" stroke="${c}" stroke-width="0.5"/>`; });
+      out+=`<path d="${markerPath(seriesShape(gi),xs,Y(b.mean),SCI.rMean)}" fill="${T.surface}" stroke="${T.ink}" stroke-width="0.55"/>`;
+    });
+    out+=`</g>`;
+    G.forEach((g,gi)=>{ out+=`<text x="${X(gi).toFixed(2)}" y="${(oy+ph+SCI.fsTick+2.2).toFixed(2)}" text-anchor="middle" font-size="${SCI.fsTick}" fill="${T.ink}">${g.num}</text>`; });
+  });
+  return {svg:out, W:box.W, H:box.H};
+}
+
+function sciJVFigure(T,box){
+  const G=plotGroups(); if(!G.length) return null;
+  const W=box.W, H=box.H;
+  const mT=SCI.fsLetter+2.5, mB=SCI.fsTick+SCI.fsAxis+8, mR=4;
+  let jmin=0, vmax=0; const items=[];
+  G.forEach((g,i)=>{ if(!g.best) return; const {s,c}=g.best;
+    if(c.jsc<jmin) jmin=c.jsc; if(c.voc>vmax) vmax=c.voc;
+    items.push({s,c,color:g.color,num:g.num}); });
+  if(!items.length) return null;
+  const v0=-0.2, v1=Math.max(0.9, vmax*1.10);
+  const lo=jmin*1.15, hi=Math.max(-jmin*0.18, 2);
+  const t=tickSet(lo,hi,6), xt0=tickSet(v0,v1,6);
+  const yt={lo,hi,maj:t.maj,minors:t.minors,step:t.step};
+  const xt={lo:v0,hi:v1,maj:xt0.maj,minors:xt0.minors,step:xt0.step};
+  const mL=SCI.fsAxis+3+tickW(yt)+SCI.tkMaj;
+  const pw=W-mL-mR, ph=H-mT-mB;
+  const X=v=>mL+(v-v0)/(v1-v0)*pw, Y=j=>mT+(hi-j)/(hi-lo)*ph;
+  const cid='jvc'+Math.round(W);
+  let out=`<text x="0" y="${(mT-2.5).toFixed(2)}" font-size="${SCI.fsLetter}" font-weight="700" fill="${T.ink}">e</text>`;
+  out+=`<clipPath id="${cid}"><rect x="${mL.toFixed(2)}" y="${mT}" width="${pw.toFixed(2)}" height="${ph.toFixed(2)}"/></clipPath>`;
+  out+=`<line x1="${mL.toFixed(2)}" y1="${Y(0).toFixed(2)}" x2="${(mL+pw).toFixed(2)}" y2="${Y(0).toFixed(2)}" stroke="#9aa4a8" stroke-width="0.5" stroke-dasharray="2 1.8"/>`;   // T.line is too pale to survive print
+  out+=`<g clip-path="url(#${cid})">`;
+  items.forEach(({s,c,color})=>{
+    let d='';
+    for(let i=0;i<s.npts;i++){
+      const v=s.vmin+i*s.vstep;
+      if(v<v0-0.05||v>v1+0.05) continue;
+      const y=Y(c.curve[i]);
+      d+=(d?'L':'M')+X(v).toFixed(2)+','+(y<-300?-300:y>H+300?H+300:y).toFixed(2);
+    }
+    out+=`<path d="${d}" fill="none" stroke="${color}" stroke-width="${SCI.lwData}" stroke-linejoin="round"/>`;
+  });
+  out+=`</g>`;
+  out+=frameSVG(mL,mT,pw,ph,T,yt,xt);
+  out+=`<text x="${(mL+pw/2).toFixed(2)}" y="${(H-1.5).toFixed(2)}" text-anchor="middle" font-size="${SCI.fsAxis}" fill="${T.ink}">Voltage (V)</text>`;
+  out+=`<text transform="translate(${SCI.fsAxis},${(mT+ph/2).toFixed(2)}) rotate(-90)" text-anchor="middle" font-size="${SCI.fsAxis}" fill="${T.ink}">Current density (mA cm<tspan baseline-shift="super" font-size="${SCI.fsTick-1.4}">−2</tspan>)</text>`;
+  return {svg:out, W, H};
+}
+
+/* one key for the whole plate: the marker and the line a reader matches against every panel */
+function sciKey(G,T,W,cols){
+  const colW=W/cols, rowH=SCI.fsLeg*1.75, lineW=13;
+  let out='';
+  G.forEach((g,i)=>{
+    const x=(i%cols)*colW, y=Math.floor(i/cols)*rowH+SCI.fsLeg;
+    out+=`<line x1="${x}" y1="${(y-2.4).toFixed(2)}" x2="${x+lineW}" y2="${(y-2.4).toFixed(2)}" stroke="${g.color}" stroke-width="${SCI.lwData}"/>`;
+    out+=`<path d="${markerPath(seriesShape(i),x+lineW/2,y-2.4,2.4)}" fill="${g.color}" stroke="${T.ink}" stroke-width="0.5"/>`;
+    out+=`<text x="${x+lineW+4}" y="${y.toFixed(2)}" font-size="${SCI.fsLeg}" fill="${T.ink}">${esc(clip(g.num+'  '+g.name, chars(colW-lineW-34,SCI.fsLeg)))}`
+       + `<tspan fill="${T.muted}">  (n = ${g.n})</tspan></text>`;
+  });
+  return {svg:out, H:Math.ceil(G.length/cols)*rowH};
+}
+function sciCaption(text,W){
+  const per=chars(W,SCI.fsCap), words=text.split(' ');
+  const lines=[]; let cur='';
+  words.forEach(w=>{ if((cur+' '+w).trim().length>per){ lines.push(cur.trim()); cur=w; } else cur+=' '+w; });
+  if(cur.trim()) lines.push(cur.trim());
+  return {svg:lines.map((l,i)=>`<text x="0" y="${(i*SCI.fsCap*1.35).toFixed(2)}" font-size="${SCI.fsCap}" fill="#4a5560">${esc(l)}</text>`).join(''),
+          H:lines.length*SCI.fsCap*1.35};
+}
+
+const CAP_AD='Panels a–d, box: interquartile range, centre line: median, whiskers: 1.5 × IQR, open symbol: mean, small circles: every included illuminated pixel; points beyond the whiskers are drawn open.';
+const CAP_E ='Panel e, the highest-PCE pixel of each group.';
+
+/* one builder, three slices — each at the journal width that slice is actually printed at */
+function sciPlate(T,opt){
+  opt=opt||{};
+  const want=opt.want||'all';
+  const G=plotGroups(); if(!G.length) return null;
+  const M=4;
+  const keyCols = G.length>8 ? 3 : (G.length>3 ? 2 : 1);
+
+  if(want==='params'){
+    const W=WIDTH.half, inner=W-M*2;
+    const pf=sciParamFigure(T,{W:inner, H:inner*0.80, cols:2}); if(!pf) return null;
+    const k=sciKey(G,T,inner,keyCols), cap=sciCaption(CAP_AD,inner);
+    const kY=M+pf.H+9, cY=kY+k.H+9;
+    return {W, H:cY+cap.H+M+2, mm:120, svg:
+      `<g transform="translate(${M},${M})">${pf.svg}</g>`+
+      `<g transform="translate(${M},${kY})">${k.svg}</g>`+
+      `<g transform="translate(${M},${cY+SCI.fsCap})">${cap.svg}</g>`};
+  }
+  if(want==='jv'){
+    const W=WIDTH.single, inner=W-M*2;
+    const jf=sciJVFigure(T,{W:inner, H:inner*0.82}); if(!jf) return null;
+    const k=sciKey(G,T,inner,1), cap=sciCaption(CAP_E,inner);
+    const kY=M+jf.H+7, cY=kY+k.H+8;
+    return {W, H:cY+cap.H+M+2, mm:89, svg:
+      `<g transform="translate(${M},${M})">${jf.svg}</g>`+
+      `<g transform="translate(${M},${kY})">${k.svg}</g>`+
+      `<g transform="translate(${M},${cY+SCI.fsCap})">${cap.svg}</g>`};
+  }
+
+  /* a–d as a 2x2 block, e beside it at the block's full height — the shape this figure takes in print */
+  const W=WIDTH.double, inner=W-M*2;
+  const gap=14, blockW=inner*0.555, jvW=inner-blockW-gap;
+  const blockH=blockW*0.86;
+  const pf=sciParamFigure(T,{W:blockW, H:blockH, cols:2});
+  const jf=sciJVFigure(T,{W:jvW, H:blockH});
+  if(!pf||!jf) return null;
+  const k=sciKey(G,T,inner,Math.max(2,keyCols));
+  const cap=sciCaption(CAP_AD+' '+CAP_E,inner);
+  const kY=M+blockH+10, rY=kY+k.H+6, cY=rY+7;
+  return {W, H:cY+cap.H+M+2, mm:183, svg:
+    `<g transform="translate(${M},${M})">${pf.svg}</g>`+
+    `<g transform="translate(${M+blockW+gap},${M})">${jf.svg}</g>`+
+    `<g transform="translate(${M},${kY})">${k.svg}</g>`+
+    `<line x1="${M}" y1="${rY}" x2="${W-M}" y2="${rY}" stroke="${T.line}" stroke-width="0.5"/>`+
+    `<g transform="translate(${M},${cY+SCI.fsCap})">${cap.svg}</g>`};
 }
 
 /* ---- export ---- */
@@ -1323,12 +1386,13 @@ async function runExport(){
 
   async function savePlot(fig, base){
     if(!fig) return;
-    const doc=svgDoc(fig.svg, fig.W, fig.H, T, 0);
-    if(fmt==='png') push(await saveOne(`${base}_${stamp}.png`, await svgToPng(doc,3)));
+    const doc=svgDoc(fig.svg, fig.W, fig.H, T, 0, fig.mm);
+    // the units are points, so a scale of 600/72 lands the raster at exactly 600 dpi
+    if(fmt==='png') push(await saveOne(`${base}_${stamp}.png`, await svgToPng(doc,600/72)));
     else push(await saveOne(`${base}_${stamp}.svg`, doc, `${base}_${stamp}.txt`, doc));
   }
-  if(wantP) await savePlot(plate(T,{want:'params'}), 'jv_parameters');
-  if(wantJ) await savePlot(plate(T,{want:'jv'}), 'jv_curves');
+  if(wantP) await savePlot(sciPlate(T,{want:'params'}), 'jv_parameters');
+  if(wantJ) await savePlot(sciPlate(T,{want:'jv'}), 'jv_curves');
   if(wantT){ const csv=tableCSV(); push(await saveOne(`jv_summary_${stamp}.csv`, csv, `jv_summary_${stamp}.txt`, csv)); }
 
   document.getElementById('expDlg').close();
@@ -1346,6 +1410,10 @@ document.body.addEventListener('click',e=>{
     case 'expandAll': { const any=FILES.some(f=>!S.expanded[f]); FILES.forEach(f=>{ if(any) S.expanded[f]=true; else delete S.expanded[f]; }); render(); break; }
     case 'group': if(sel.size) newGroup([...sel]); break;
     case 'import': fileIn.click(); break;
+    case 'watchPick': pickFolder(); break;
+    case 'watchGrant': grantWatch(); break;
+    case 'watchNow': scanOnce(true); break;
+    case 'watchStop': stopWatch(); break;
     case 'clearGroups': S.groups=[]; sel.clear(); render(); toast('All groups cleared — every file is ungrouped'); break;
     case 'exportOpen': document.getElementById('expDlg').showModal(); break;
     case 'restore': restoreAll(); break;
@@ -1370,4 +1438,124 @@ let tt; function toast(m){ const t=document.getElementById('toast'); t.textConte
 
 document.getElementById('btnDoExport').addEventListener('click',runExport);
 load(); reindex(); render();
+/* ================= folder watching (Chrome / Edge · File System Access API) ================= */
+/* No change events exist in the API, so this polls: it lists the directory, compares each file's
+   size and mtime with what it last saw, and re-parses only what moved. A file still being written
+   by LabVIEW simply parses short — the next poll picks up the rest. */
+const FS_OK = typeof window.showDirectoryPicker === 'function';
+const POLL_MS = 3000;
+let dirHandle=null, watchTimer=null, watchBusy=false;
+let seen={};                 // name -> {size, mtime}
+
+/* the directory handle is not JSON — it round-trips through IndexedDB, not localStorage */
+function idbOpen(){ return new Promise((res,rej)=>{
+  const r=indexedDB.open('jvexp',1);
+  r.onupgradeneeded=()=>r.result.createObjectStore('kv');
+  r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+async function idbSet(k,v){ const db=await idbOpen(); return new Promise((res,rej)=>{
+  const t=db.transaction('kv','readwrite'); t.objectStore('kv').put(v,k);
+  t.oncomplete=()=>res(); t.onerror=()=>rej(t.error); }); }
+async function idbGet(k){ const db=await idbOpen(); return new Promise((res,rej)=>{
+  const t=db.transaction('kv','readonly'); const q=t.objectStore('kv').get(k);
+  q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); }
+
+const wbar=()=>document.getElementById('watchbar');
+function watchUI(state, msg){
+  const b=wbar();
+  b.hidden = state==='off';
+  b.className = 'watchbar ' + state;
+  b.querySelector('.wpath').textContent = dirHandle ? dirHandle.name : '';
+  b.querySelector('.wstat').innerHTML = msg||'';
+  b.querySelector('[data-act="watchGrant"]').hidden = state!=='paused';
+  b.querySelector('[data-act="watchNow"]').hidden  = state!=='on';
+  b.querySelector('[data-act="watchStop"]').hidden = state==='off';
+}
+
+async function pickFolder(){
+  if(!FS_OK){ toast('Folder watching needs Chrome or Edge'); return; }
+  try{
+    const h=await window.showDirectoryPicker({mode:'read', id:'jvdata', startIn:'documents'});
+    await idbSet('dir',h).catch(()=>{});
+    seen={};
+    await startWatch(h);
+  }catch(e){ if(e.name!=='AbortError') toast('Could not open that folder — '+e.message); }
+}
+async function startWatch(h){
+  dirHandle=h;
+  watchUI('on','connecting…');
+  await scanOnce(true);
+  clearInterval(watchTimer);
+  watchTimer=setInterval(()=>scanOnce(false), POLL_MS);
+}
+function stopWatch(){
+  clearInterval(watchTimer); watchTimer=null; dirHandle=null; seen={};
+  idbSet('dir',null).catch(()=>{});
+  watchUI('off',''); render();
+  toast('Stopped watching — the files stay in the workspace');
+}
+async function scanOnce(first){
+  if(!dirHandle || watchBusy) return;
+  watchBusy=true;
+  const t0=performance.now();
+  try{
+    const changed=[]; let n=0;
+    for await (const [name,entry] of dirHandle.entries()){
+      if(entry.kind!=='file' || !/\.(dat|txt)$/i.test(name)) continue;
+      n++;
+      let f; try{ f=await entry.getFile(); }catch(e){ continue; }   // locked mid-write: try again next poll
+      const prev=seen[name];
+      if(prev && prev.size===f.size && prev.mtime===f.lastModified) continue;
+      seen[name]={size:f.size, mtime:f.lastModified};
+      changed.push(f);
+    }
+    if(changed.length) await ingest(changed, !first);
+    const ms=Math.round(performance.now()-t0);
+    watchUI('on', `<b>${n}</b> file${n===1?'':'s'} · checked ${new Date().toLocaleTimeString()} · ${ms} ms`);
+  }catch(e){
+    if(e.name==='NotAllowedError'){ clearInterval(watchTimer); watchTimer=null; watchUI('paused','permission lapsed'); }
+    else watchUI('on', `<span style="color:var(--flag)">${esc(e.message)}</span>`);
+  }finally{ watchBusy=false; }
+}
+/* a file that is still being written parses short rather than failing; keep whatever is complete */
+async function ingest(files, quiet){
+  const ok=[], bad=[];
+  for(const f of files){
+    try{
+      const s=parseDat(f.name, await readAsLatin1(f), f.lastModified||Date.now());
+      if(!PX.some(p=>s.channels[p])) continue;            // nothing complete yet — wait for the next poll
+      ok.push(s);
+    }catch(err){ bad.push(f.name); }
+  }
+  if(!ok.length) return;
+  ok.forEach(s=>{
+    const i=SCANS.findIndex(x=>x.file===s.file);
+    if(i>=0) SCANS[i]=s; else SCANS.push(s);
+    delete S.removed[s.file];
+    FRESH[s.file]=Date.now();
+  });
+  reindex();
+  ok.forEach(s=>{ if(!groupOfFile(s.file)) S.groups.push({id:'g'+(S.seq++), files:[s.file]}); });
+  render();
+  setTimeout(render, FRESH_MS+200);                        // let the "new" flag expire on its own
+  if(!quiet) toast(`Loaded ${ok.length} file${ok.length===1?'':'s'} from ${dirHandle.name}`);
+  else toast(`${ok.length} file${ok.length===1?'':'s'} updated`);
+}
+
+/* on reload the handle comes back, but Chrome wants the permission re-confirmed by a click */
+(async function resumeWatch(){
+  if(!FS_OK){ document.querySelector('[data-act="watchPick"]').title =
+      'Needs Chrome or Edge — this browser has no File System Access API'; return; }
+  let h=null; try{ h=await idbGet('dir'); }catch(e){}
+  if(!h) return;
+  dirHandle=h;
+  const p=await h.queryPermission({mode:'read'}).catch(()=>'denied');
+  if(p==='granted') startWatch(h);
+  else watchUI('paused','reconnect to pick up where you left off');
+})();
+async function grantWatch(){
+  if(!dirHandle) return;
+  const p=await dirHandle.requestPermission({mode:'read'}).catch(()=>'denied');
+  if(p==='granted') startWatch(dirHandle);
+  else toast('Permission refused — pick the folder again');
+}
 </script>

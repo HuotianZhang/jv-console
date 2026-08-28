@@ -12,8 +12,10 @@ No build step, no server, no upload. `index.html` is a single self-contained fil
 
 ## Use it
 
-Open `index.html` in Chrome or Edge, then **Import files…** or drag `.dat` files
-onto the left pane.
+Open `index.html` in Chrome or Edge, then either
+
+- **Watch folder…** — pick the measurement folder once and leave it running, or
+- **Import files…** / drag `.dat` files onto the left pane for a one-off look.
 
 ## What it does
 
@@ -31,15 +33,27 @@ to merge. `×` removes a group and its files return to explorer 1. One file belo
 to exactly one group. Selection is shared between the panes — a card is filled
 when all of its files are selected and carries a left bar when only some are.
 
-**Results.** Four panels (J_SC, V_OC, FF, PCE) with jittered pixel points, a mean
-line, SD whiskers and a mean diamond; groups are numbered on the axis with the key
-drawn inside the figure. The J(V) overlay shows one curve per group — its
-best-PCE pixel — labelled directly. The summary table gives the mean of each
-parameter per group.
+**Watching a folder.** Pick the folder and the page polls it every three seconds,
+comparing each file's size and modification time and re-parsing only what moved. A
+new file arrives as its own group, so the figure follows the run; a file that
+changed is replaced in place, keeping its group and its name, and its tile carries
+a `new` flag for fifteen seconds. A file caught mid-write parses to a shorter but
+self-consistent sweep and completes on the next poll. The folder handle is kept in
+IndexedDB, so reopening the page reconnects — Chrome asks you to confirm the
+permission once, which is the *Reconnect* button. Chrome and Edge only: the File
+System Access API does not exist in Firefox or Safari, and the button says so.
 
-**Export.** Parameter plots and J(V) curves as PNG or SVG, the summary as CSV
-carrying SD, min, max and n. Figures export on a white ground with the light
-palette whatever theme you are viewing in.
+**Results.** The summary table leads, at mean ± SD with n pixels and substrates.
+Below it one plate: panels a–d are box-and-whisker over every included pixel — box
+the interquartile range, centre line the median, whiskers 1.5 × IQR, open symbol
+the mean, points beyond the whiskers drawn open — and panel e overlays the
+best-PCE pixel of each group. One key serves all five panels.
+
+**Export.** The figure is drawn at final print size, in points: the plate 183 mm,
+the parameters alone 120 mm, the J(V) panel alone 89 mm, Arial, 7 pt labels and
+8 pt bold panel letters, which is Nature's figure specification. SVG carries its
+width in millimetres, so placing it lands those point sizes literally; PNG rasters
+at 600 dpi. The summary exports as CSV carrying SD, min, max and n.
 
 ## Repository layout
 
@@ -72,7 +86,10 @@ the other, then re-check.
 
 ## What this is not, yet
 
-The folder watcher and the live measurement screen are not built. The intended
-shape is a small local Python process (polling watcher + FastAPI/WebSocket)
-serving `/live` and `/stats` on localhost, polling the share rather than
-subscribing to change notifications — see `docs/labview-dat-format.md`.
+There is no separate live measurement screen — watching the folder feeds the same
+two panes, which so far has been enough. No local process is needed: the watcher
+runs in the page, which is why there is still no server to start.
+
+Over a network share, expect the poll to take longer than it does locally; the
+watch bar reports how long each pass took, so the cost is visible rather than
+guessed at.
