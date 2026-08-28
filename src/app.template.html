@@ -210,6 +210,21 @@ dialog.exp .fmt label{padding:0}
 dialog.exp .fmt > span{font:600 10px/1 var(--f-mono); letter-spacing:.1em; text-transform:uppercase; color:var(--muted)}
 dialog.exp .note{font:400 10px/1.5 var(--f-mono); color:var(--muted); margin:var(--s5) 0 0}
 dialog.exp .acts{display:flex; justify-content:flex-end; gap:var(--s4); margin-top:var(--s6)}
+dialog.exp .acts [data-act="axesReset"]{margin-right:auto}
+#axDlg{max-width:min(660px,94vw)}   /* the table would otherwise stretch the dialog to fill the page */
+table.axes{width:100%; border-collapse:collapse; margin-bottom:var(--s3)}
+table.axes th{font:600 9px/1 var(--f-mono); letter-spacing:.1em; text-transform:uppercase; color:var(--muted);
+  text-align:right; padding:0 var(--s3) var(--s3); white-space:nowrap}
+table.axes th:first-child{text-align:left}
+table.axes td{padding:var(--s2) var(--s3); text-align:right}
+table.axes td:first-child{text-align:left; font:400 11px/1 var(--f-mono); color:var(--ink); white-space:nowrap}
+table.axes td:first-child b{font-weight:700; margin-right:var(--s4)}
+table.axes td:first-child i{font-style:normal; color:var(--muted); margin-left:var(--s3); font-size:9.5px}
+table.axes input[type=number]{width:66px; font:400 11px/1 var(--f-mono); text-align:right;
+  padding:4px 5px; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface); color:var(--ink)}
+table.axes input[type=number]:focus{outline:none; border-color:var(--accent)}
+table.axes input[type=checkbox]{accent-color:var(--accent); width:13px; height:13px; margin:0}
+table.axes tr.dim td:first-child{color:var(--ink-2)}
 
 /* ---------- the quiet rail at the bottom of the window ---------- */
 footer{position:fixed; left:0; right:0; bottom:0; height:26px; z-index:20;
@@ -297,6 +312,7 @@ body.dragging *{cursor:grabbing!important}
       <span class="nameplate"><span class="tag">reads</span><span class="ptitle">Figure set</span></span>
       <span class="pcount" id="resInfo"></span>
       <span class="grow"></span>
+      <button class="lnk" data-act="axesOpen">Axes…</button>
       <button class="lnk" data-act="clearGroups">Clear all groups</button>
       <button class="btn primary" data-act="exportOpen" id="btnExport" disabled>Export…</button>
     </header>
@@ -332,6 +348,19 @@ body.dragging *{cursor:grabbing!important}
   <div class="acts">
     <button class="btn" onclick="document.getElementById('expDlg').close()">Cancel</button>
     <button class="btn primary" id="btnDoExport">Save</button>
+  </div>
+</dialog>
+<dialog id="axDlg" class="exp">
+  <h3>Axis limits</h3>
+  <table class="axes"><thead><tr>
+    <th>Panel</th><th>min</th><th>max</th><th>tick step</th><th>0 in view</th>
+  </tr></thead><tbody id="axRows"></tbody></table>
+  <p class="note">Blank is automatic. Limits apply to the figure here and to every export, and are
+     remembered alongside your groups — so two figures can be pinned to the same scale.</p>
+  <div class="acts">
+    <button class="btn" data-act="axesReset">Reset all to auto</button>
+    <button class="btn" onclick="document.getElementById('axDlg').close()">Cancel</button>
+    <button class="btn primary" data-act="axesApply">Apply</button>
   </div>
 </dialog>
 <div class="toast" id="toast"></div>
@@ -372,7 +401,21 @@ function load(){
   let st=null; try{ const r=localStorage.getItem('jvexp.v1'); if(r) st=JSON.parse(r); }catch(e){}
   S = (st && st.groups) ? st : defaults();
   S.removed = S.removed || {};
+  S.axes = Object.assign(defaultAxes(), S.axes || {});
 }
+/* every axis override lives here; null means "work it out from the data" */
+const AX_ROWS=[
+  {k:'jsc', panel:'a', name:'J<sub>SC</sub>', unit:'mA cm⁻²', zeroDefault:true,  hasZero:true},
+  {k:'voc', panel:'b', name:'V<sub>OC</sub>', unit:'V',        zeroDefault:false, hasZero:true},
+  {k:'ff',  panel:'c', name:'FF',             unit:'%',        zeroDefault:true,  hasZero:true},
+  {k:'pce', panel:'d', name:'PCE',            unit:'%',        zeroDefault:true,  hasZero:true},
+  {k:'jvy', panel:'e', name:'current',        unit:'mA cm⁻²', zeroDefault:false, hasZero:false},
+  {k:'jvx', panel:'e', name:'voltage',        unit:'V',        zeroDefault:false, hasZero:false},
+];
+function defaultAxes(){
+  const o={}; AX_ROWS.forEach(r=>{ o[r.k]={lo:null, hi:null, step:null, zero:r.zeroDefault}; }); return o;
+}
+const axCfg = k => (S.axes && S.axes[k]) || {lo:null,hi:null,step:null,zero:false};
 function save(){ try{ localStorage.setItem('jvexp.v1', JSON.stringify(S)); }catch(e){} }
 
 const fname = f => S.names[f] || byFile[f].name;
@@ -1137,8 +1180,11 @@ function sciNice(lo,hi,target){
   for(let v=t0; v<=hi+step*1e-9; v+=step) ts.push(Number(v.toFixed(10)));
   return ts;
 }
-function tickSet(lo,hi,target){
-  const maj=sciNice(lo,hi,target);
+function tickSet(lo,hi,target,forced){
+  const maj = forced>0
+    ? (()=>{ const m=[]; for(let v=Math.ceil(lo/forced-1e-9)*forced; v<=hi+forced*1e-9; v+=forced) m.push(Number(v.toFixed(10)));
+             return m.length?m:sciNice(lo,hi,target); })()
+    : sciNice(lo,hi,target);
   const step=maj.length>1 ? maj[1]-maj[0] : (hi-lo)||1;
   const mant=step/Math.pow(10,Math.floor(Math.log10(Math.abs(step))));
   const n=Math.abs(mant-2)<0.05 ? 4 : 5;
@@ -1204,12 +1250,18 @@ function sciParamFigure(T,box){
   let out='';
   METRICS.forEach((M,mi)=>{
     const ox=(mi%cols)*(panelW+gapX)+mL, oy=Math.floor(mi/cols)*(panelH+gapY)+mT;
+    const A=axCfg(M.k);
     let lo=Infinity, hi=-Infinity;
     G.forEach(g=>g.vals[M.k].forEach(v=>{ if(v<lo)lo=v; if(v>hi)hi=v; }));
     const pad=(hi-lo||Math.abs(hi)||1)*0.12; lo-=pad; hi+=pad;
-    if(M.k!=='voc') lo=Math.min(lo,0);
-    const t=tickSet(lo,hi,6);   // 6 keeps FF on 10s rather than jumping to 20s
-    const yt={lo:Math.min(lo,t.maj[0]), hi:Math.max(hi,t.maj[t.maj.length-1]), maj:t.maj, minors:t.minors, step:t.step};
+    if(A.zero) lo=Math.min(lo,0);
+    if(A.lo!=null) lo=A.lo;
+    if(A.hi!=null) hi=A.hi;
+    if(!(hi>lo)) hi=lo+1;
+    const t=tickSet(lo,hi,6,A.step);   // 6 keeps FF on 10s rather than jumping to 20s
+    /* an automatic axis grows to meet its outermost tick; one you typed stays where you put it */
+    const yt={lo:A.lo!=null?lo:Math.min(lo,t.maj[0]), hi:A.hi!=null?hi:Math.max(hi,t.maj[t.maj.length-1]),
+              maj:t.maj, minors:t.minors, step:t.step};
     const Y=v=>oy+ph-(v-yt.lo)/(yt.hi-yt.lo)*ph;
     const slot=pw/G.length, X=i=>ox+(i+0.5)*slot;
     const bw=Math.min(9,slot*0.46), cap=bw*0.42;
@@ -1255,8 +1307,10 @@ function sciJVFigure(T,box){
   /* Frame on the data, never on an assumed sign. The window runs from a little below 0 V to just
      past the largest V_OC; the current limits come from whatever the curves actually do inside it,
      with the forward rise allowed only as headroom so it cannot flatten the photocurrent plateau. */
-  const v0 = Math.max(dataV0, -0.2);
-  const v1 = isFinite(vocMax) && vocMax>v0 ? Math.min(dataV1, vocMax*1.12) : dataV1;
+  const AX=axCfg('jvx'), AY=axCfg('jvy');
+  let v0 = AX.lo!=null ? AX.lo : Math.max(dataV0, -0.2);
+  let v1 = AX.hi!=null ? AX.hi : (isFinite(vocMax) && vocMax>v0 ? Math.min(dataV1, vocMax*1.12) : dataV1);
+  if(!(v1>v0)) v1=v0+1;
   let jlo=Infinity, jhi=-Infinity;
   items.forEach(({s,c})=>{ for(let i=0;i<s.npts;i++){
     const v=s.vmin+i*s.vstep; if(v<v0||v>v1) continue;
@@ -1265,9 +1319,11 @@ function sciJVFigure(T,box){
   }});
   if(!isFinite(jlo)||!isFinite(jhi)){ jlo=-1; jhi=1; }
   const span=(jhi-jlo)||1;
-  const lo=jlo-span*0.06;
-  const hi=Math.max(lo+span*0.15, jlo<0 ? Math.min(jhi+span*0.06, -jlo*0.25) : jhi+span*0.06);
-  const t=tickSet(lo,hi,6), xt0=tickSet(v0,v1,6);
+  let lo = AY.lo!=null ? AY.lo : jlo-span*0.06;
+  let hi = AY.hi!=null ? AY.hi
+         : Math.max(lo+span*0.15, jlo<0 ? Math.min(jhi+span*0.06, -jlo*0.25) : jhi+span*0.06);
+  if(!(hi>lo)) hi=lo+1;
+  const t=tickSet(lo,hi,6,AY.step), xt0=tickSet(v0,v1,6,AX.step);
   const yt={lo,hi,maj:t.maj,minors:t.minors,step:t.step};
   const xt={lo:v0,hi:v1,maj:xt0.maj,minors:xt0.minors,step:xt0.step};
   const mL=SCI.fsAxis+3+tickW(yt)+SCI.tkMaj;
@@ -1367,6 +1423,36 @@ function sciPlate(T,opt){
     `<g transform="translate(${M},${cY+SCI.fsCap})">${cap.svg}</g>`};
 }
 
+/* ---- axis limits ---- */
+function fillAxes(){
+  document.getElementById('axRows').innerHTML = AX_ROWS.map(r=>{
+    const a=axCfg(r.k), v=x=>x==null?'':x;
+    const num=(f,ph)=>`<input type="number" step="any" data-ax="${r.k}" data-f="${f}" value="${v(a[f])}" placeholder="${ph}">`;
+    return `<tr class="${r.panel==='e'?'dim':''}">
+      <td><b>${r.panel}</b>${r.name}<i>${r.unit}</i></td>
+      <td>${num('lo','auto')}</td><td>${num('hi','auto')}</td><td>${num('step','auto')}</td>
+      <td>${r.hasZero?`<input type="checkbox" data-ax="${r.k}" data-f="zero" ${a.zero?'checked':''}>`:'—'}</td>
+    </tr>`;
+  }).join('');
+}
+function openAxes(){ fillAxes(); document.getElementById('axDlg').showModal(); }
+function applyAxes(){
+  document.querySelectorAll('#axRows [data-ax]').forEach(el=>{
+    const c=S.axes[el.dataset.ax]; if(!c) return;
+    if(el.dataset.f==='zero'){ c.zero=el.checked; return; }
+    const raw=el.value.trim();
+    const n=raw===''?null:Number(raw);
+    c[el.dataset.f] = (n==null||!isFinite(n)) ? null : n;
+  });
+  ['jsc','voc','ff','pce','jvy','jvx'].forEach(k=>{
+    const c=S.axes[k];
+    if(c.lo!=null && c.hi!=null && c.hi<=c.lo){ c.hi=null; toast('max must be above min — that one is back to auto'); }
+    if(c.step!=null && !(c.step>0)) c.step=null;
+  });
+  document.getElementById('axDlg').close();
+  renderResults(); save();
+}
+
 /* ---- export ---- */
 function tableCSV(){
   const head=['number','group','n_pixels','n_substrates',
@@ -1464,6 +1550,9 @@ document.body.addEventListener('click',e=>{
     case 'watchStop': stopWatch(); break;
     case 'clearGroups': S.groups=[]; sel.clear(); render(); toast('All groups cleared — every file is ungrouped'); break;
     case 'exportOpen': document.getElementById('expDlg').showModal(); break;
+    case 'axesOpen': openAxes(); break;
+    case 'axesApply': applyAxes(); break;
+    case 'axesReset': S.axes=defaultAxes(); fillAxes(); applyAxes(); break;
     case 'restore': restoreAll(); break;
     case 'mergeSel': { const ids=touchedGroups().map(g=>g.id); if(ids.length>1) mergeGroups(ids.slice(1), ids[0]); break; }
     case 'delSel': { const ids=new Set(touchedGroups().map(g=>g.id));
